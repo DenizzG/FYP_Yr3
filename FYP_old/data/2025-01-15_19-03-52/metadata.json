@@ -1,0 +1,176 @@
+{
+  "config": {
+    "area": {
+      "screen_size": [
+        150,
+        150
+      ],
+      "pixel_scale": 30
+    },
+    "display": {
+      "fire_size": 2,
+      "control_line_size": 2,
+      "agent_size": 4,
+      "rescale_factor": 2
+    },
+    "simulation": {
+      "update_rate": 1,
+      "runtime": "90d",
+      "headless": false,
+      "draw_spread_graph": false,
+      "record": true,
+      "save_data": true,
+      "data_type": "npy",
+      "sf_home": "/home/denizg/FYP_Yr3"
+    },
+    "mitigation": {
+      "ros_attenuation": false
+    },
+    "operational": {
+      "seed": null,
+      "latitude": 38.422,
+      "longitude": -118.266,
+      "height": 2000,
+      "width": 2000,
+      "resolution": 30,
+      "year": 2020
+    },
+    "terrain": {
+      "topography": {
+        "type": "functional",
+        "functional": {
+          "function": "perlin",
+          "perlin": {
+            "octaves": 3,
+            "persistence": 0.7,
+            "lacunarity": 2.0,
+            "seed": 827,
+            "range_min": 100.0,
+            "range_max": 300.0
+          },
+          "gaussian": {
+            "amplitude": 500,
+            "mu_x": 50,
+            "mu_y": 50,
+            "sigma_x": 50,
+            "sigma_y": 50
+          }
+        }
+      },
+      "fuel": {
+        "type": "functional",
+        "functional": {
+          "function": "chaparral",
+          "chaparral": {
+            "seed": 1113
+          }
+        },
+        "burn_probability": {
+          "type": "functional",
+          "functional": {
+            "function": "perlin",
+            "perlin": {
+              "octaves": 3,
+              "persistence": 0.7,
+              "lacunarity": 2.0,
+              "seed": 827,
+              "range_min": 100.0,
+              "range_max": 300.0
+            },
+            "gaussian": {
+              "amplitude": 500,
+              "mu_x": 50,
+              "mu_y": 50,
+              "sigma_x": 50,
+              "sigma_y": 50
+            }
+          }
+        }
+      }
+    },
+    "fire": {
+      "fire_initial_position": {
+        "type": "static",
+        "static": {
+          "position": "(25, 25)"
+        },
+        "random": {
+          "seed": 1234
+        }
+      },
+      "max_fire_duration": 5,
+      "diagonal_spread": true
+    },
+    "environment": {
+      "moisture": 0.001
+    },
+    "wind": {
+      "function": "perlin",
+      "cfd": {
+        "time_to_train": 1000,
+        "result_accuracy": 1,
+        "iterations": 1,
+        "scale": 1,
+        "timestep_dt": 1.0,
+        "diffusion": 0.0,
+        "viscosity": 1e-07,
+        "speed": 19.0,
+        "direction": "north"
+      },
+      "simple": {
+        "speed": 20,
+        "direction": 270.0
+      },
+      "perlin": {
+        "speed": {
+          "seed": 2345,
+          "scale": 400,
+          "octaves": 3,
+          "persistence": 0.7,
+          "lacunarity": 2.0,
+          "range_min": 7,
+          "range_max": 47
+        },
+        "direction": {
+          "seed": 650,
+          "scale": 1500,
+          "octaves": 2,
+          "persistence": 0.9,
+          "lacunarity": 1.0,
+          "range_min": 0.0,
+          "range_max": 360.0
+        }
+      }
+    }
+  },
+  "seeds": {
+    "elevation": 827,
+    "fuel": 1113,
+    "wind_speed": 2345,
+    "wind_direction": 650
+  },
+  "layer_types": {
+    "elevation": "functional",
+    "fuel": "functional"
+  },
+  "shape": [
+    150,
+    150
+  ],
+  "static_data": {
+    "data": {
+      "w_0": "w_0.npy",
+      "sigma": "sigma.npy",
+      "delta": "delta.npy",
+      "M_x": "M_x.npy",
+      "elevation": "elevation.npy",
+      "wind_speed": "wind_speed.npy",
+      "wind_direction": "wind_direction.npy"
+    },
+    "shape": [
+      150,
+      150
+    ]
+  },
+  "fire_map": "fire_map.npy"
+}
