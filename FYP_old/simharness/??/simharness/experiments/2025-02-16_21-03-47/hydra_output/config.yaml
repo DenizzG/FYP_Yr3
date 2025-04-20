@@ -1,0 +1,208 @@
+simulation:
+  simfire:
+    area:
+      screen_size:
+        _target_: builtins.tuple
+        _args_:
+        - - ${simulation.screen_height}
+          - ${simulation.screen_width}
+      pixel_scale: 50
+    display:
+      fire_size: 1
+      control_line_size: 3
+      agent_size: 4
+      rescale_factor: 4
+    simulation:
+      update_rate: 1
+      runtime: 15hr
+      headless: true
+      record: true
+      save_data: false
+      draw_spread_graph: false
+      data_type: npy
+      sf_home: ${oc.env:SF_HOME}
+    mitigation:
+      ros_attenuation: false
+    operational:
+      seed: null
+      latitude: 36.09493
+      longitude: -120.52193
+      height: ${operational_screen_size:${simulation.screen_height}}
+      width: ${operational_screen_size:${simulation.screen_width}}
+      resolution: 30
+      year: 2019
+    terrain:
+      topography:
+        type: operational
+      fuel:
+        type: operational
+    fire:
+      fire_initial_position:
+        type: static
+        static:
+          position:
+            _target_: builtins.tuple
+            _args_:
+            - - 122
+              - 122
+      max_fire_duration: 10
+      diagonal_spread: true
+    environment:
+      moisture: 0.001
+    wind:
+      function: simple
+      cfd:
+        time_to_train: 1000
+        iterations: 1
+        scale: 1
+        timestep_dt: 1.0
+        diffusion: 0.0
+        viscosity: 1.0e-07
+        speed: 19
+        direction: north
+      simple:
+        speed: 5
+        direction: 135.0
+      perlin:
+        speed:
+          seed: 2345
+          scale: 400
+          octaves: 3
+          persistence: 0.7
+          lacunarity: 2.0
+          range_min: 7
+          range_max: 47
+        direction:
+          seed: 650
+          scale: 1500
+          octaves: 2
+          persistence: 0.9
+          lacunarity: 1.0
+          range_min: 0.0
+          range_max: 360.0
+  screen_size: 128
+  screen_height: ${.screen_size}
+  screen_width: ${.screen_size}
+  fire_initial_position:
+    generator:
+      make_all_positions: false
+      output_size: 1
+      save_path: ${cli.data_dir}/simfire/data/fire_initial_positions
+    sampler:
+      resample_interval: 1
+      sample_size:
+        train: 8
+        eval: 1
+      query: 50 < elapsed_steps < 150
+      population_size: 1024
+training:
+  model:
+    conv_filters:
+    - - 16
+      - - 2
+        - 2
+      - 2
+    - - 32
+      - - 2
+        - 2
+      - 2
+    - - 64
+      - - 4
+        - 4
+      - 4
+    - - 256
+      - - 8
+        - 8
+      - 1
+  train_batch_size: 1000
+environment:
+  env: simharness2.environments.ReactiveHarness
+  env_task_fn: null
+  render_env: false
+  clip_rewards: null
+  normalize_actions: true
+  disable_env_checking: false
+  is_atari: false
+framework:
+  framework: torch
+  eager_tracing: false
+rollouts:
+  num_rollout_workers: 8
+  num_envs_per_worker: 1
+  rollout_fragment_length: auto
+  batch_mode: truncate_episodes
+  validate_workers_after_construction: true
+  ignore_worker_failures: false
+  recreate_failed_workers: false
+  restart_failed_sub_environments: false
+  compress_observations: false
+evaluation:
+  evaluation_config:
+    env: ${environment.env}
+    env_config:
+      in_evaluation: true
+      harness_analytics_partial:
+        sim_analytics_partial:
+          save_history: true
+    num_envs_per_worker: 1
+  evaluation_interval: 2
+  evaluation_duration: 1
+  evaluation_duration_unit: episodes
+  evaluation_num_workers: 1
+  enable_async_evaluation: false
+exploration:
+  exploration_config:
+    type: EpsilonGreedy
+    initial_epsilon: 1.0
+    final_epsilon: 0.05
+    warmup_timesteps: 1000000
+    epsilon_timesteps: 10000000
+  explore: true
+resources:
+  num_gpus: 0.4
+  num_cpus_per_worker: 1
+  num_gpus_per_worker: 0
+  num_cpus_for_local_worker: 1
+  placement_strategy: PACK
+tunables:
+  training:
+    lr:
+      type: loguniform
+      values:
+      - 0.0001
+      - 0.01
+    gamma:
+      type: uniform
+      values:
+      - 0.5
+      - 0.9
+    train_batch_size:
+      type: choice
+      values:
+      - 16
+      - 32
+      - 64
+      - 128
+cli:
+  mode: train
+  data_dir: ??
+algo:
+  name: PPO
+  checkpoint_path: null
+checkpoint:
+  checkpoint_frequency: 20
+  num_to_keep: null
+stop_conditions:
+  training_iteration: 4
+  timesteps_total: 2000000000
+  episodes_total: 1000000
+  episode_reward_mean: 10000000
+debugging:
+  log_level: INFO
+  log_sys_usage: true
+  seed: 2000
+  logger_config:
+    type:
+      _target_: hydra.utils.get_class
+      path: ray.tune.logger.UnifiedLogger
+    logdir: ${hydra:run.dir}
