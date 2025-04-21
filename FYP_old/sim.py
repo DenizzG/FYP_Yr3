@@ -1,7 +1,7 @@
 from simfire.utils.config import Config
 from simfire.sim.simulation import FireSimulation
 
-config = Config("/home/denizg/FYP_Yr3/simfire/configs/operational_config.yml")
+config = Config("/home/denizg/FYP_Yr3/FYP_old/simfire/configs/operational_config.yml")
 
 sim = FireSimulation(config)
 print("1")
