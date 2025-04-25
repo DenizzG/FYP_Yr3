@@ -7,7 +7,6 @@ area:
 display:
   fire_size: 2
   control_line_size: 2
-  agent_size: 4
   rescale_factor: 2
 
 simulation:
@@ -22,6 +21,18 @@ simulation:
 
 mitigation:
   ros_attenuation: false
+
+agents:
+  firefighter:
+    agent_size: 4
+    spawn_points:
+        [50, 50]
+        [70, 70]
+
+  dozer:
+    agent_size: 6
+    spawn_points: []
+
 
 operational:
   seed:

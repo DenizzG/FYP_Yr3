@@ -388,9 +388,9 @@ class WetLine(pygame.sprite.Sprite):
 
 class Agent(pygame.sprite.Sprite):
     """
-    This sprite represents a fire burning on one pixel of the terrain. Its
-    image is generally kept very small to make rendering easier. All fire
-    spreading is handled by the FireManager it is attached to.
+    This sprite represents an agent (e.g. firefighter, mitigation unit) on one pixel of the terrain.
+    Its image is generally kept very small to make rendering easier.
+    All agent movement and logic are handled by the simulation or an external controller.
     """
 
     def __init__(self, pos: Tuple[int, int], size: int, headless: bool = False) -> None:
@@ -410,9 +410,15 @@ class Agent(pygame.sprite.Sprite):
         self.agent_color: Optional[np.ndarray] = None
         self.size = size
         self.headless = headless
-        self.rect: pygame.rect.Rect
 
-        if self.headless:
+        #rect.x, rect.y         # Position (top-left corner)
+        #rect.width, rect.height  # Size
+        #rect.center            # Center point
+        #rect.colliderect(other_rect)  # Check if it overlaps with another
+           
+        self.rect: pygame.rect.Rect 
+
+        if self.headless: #if not running on a server (always for this application)
             self.image = None
             # Need to use self.rect to track the location of the sprite
             # When running headless, we need this to be a tuple instead of a PyGame Rect
@@ -424,7 +430,6 @@ class Agent(pygame.sprite.Sprite):
                 self.agent_color[:, :, 1] = 160
                 self.agent_color[:, :, 2] = 221
             self.image = pygame.surfarray.make_surface(self.agent_color)
-
             self.rect = self.image.get_rect()
             self.rect.update(*(self.pos + (size, size)))
 

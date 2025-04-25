@@ -51,7 +51,7 @@ class Game:
                 "The game cannot be recorded with headless=True. "
                 "Got record=True and headless=True"
             )
-        self.screen=5=_size = screen_size
+        self.screen_size = screen_size
         self.rescale_factor = rescale_factor
         self.headless = headless
         self.record = record
@@ -319,7 +319,7 @@ class Game:
         terrain: Terrain,
         fire_sprites: Sequence[Fire],
         fireline_sprites: Sequence[Union[FireLine, ScratchLine, WetLine]],
-        agent_sprites: Sequence[Agent],
+        agent_sprites: Sequence[Agent], #agent_sprites is a sequence (list like) of Agents
         wind_magnitude_map: Union[Sequence[Sequence[float]], np.ndarray],
         wind_direction_map: Union[Sequence[Sequence[float]], np.ndarray],
     ) -> GameStatus:

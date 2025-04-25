@@ -148,7 +148,10 @@ class ScratchLineManager(ControlLineManager):
                     between which two points control lines will be drawn.
         """
         super().__init__(
-            size=size, pixel_scale=pixel_scale, terrain=terrain, headless=headless
+            size=size, 
+            pixel_scale=pixel_scale, 
+            terrain=terrain, 
+            headless=headless
         )
         self.line_type = BurnStatus.SCRATCHLINE
         self.sprite_type = ScratchLine
@@ -184,7 +187,10 @@ class WetLineManager(ControlLineManager):
                     between which two points control lines will be drawn.
         """
         super().__init__(
-            size=size, pixel_scale=pixel_scale, terrain=terrain, headless=headless
+            size=size, 
+            pixel_scale=pixel_scale, 
+            terrain=terrain, 
+            headless=headless
         )
         self.line_type = BurnStatus.WETLINE
         self.sprite_type = WetLine

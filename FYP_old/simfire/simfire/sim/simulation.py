@@ -34,7 +34,8 @@ from ..world.parameters import Environment, FuelParticle
 
 log = create_logger(__name__)
 
-
+#@abstract method is saying, every single subclass of simulation (FireSimulation) MUST implement all
+#methods with @abstractmethod header
 class Simulation(ABC):
     """
     Base class with several built in methods for interacting with different simulators.
@@ -183,7 +184,6 @@ class Simulation(ABC):
         """
         pass
 
-
 class FireSimulation(Simulation):
     def __init__(self, config: Config) -> None:
         """
@@ -197,6 +197,8 @@ class FireSimulation(Simulation):
         self._rendering: bool = False
         self.game_status: GameStatus = GameStatus.RUNNING
         self.fire_map: np.ndarray
+
+        #keeps track of actuators not fire sprites
         self.agent_positions: np.ndarray
         self.agents: Dict[int, Agent] = {}
         self._create_out_path()
@@ -208,6 +210,7 @@ class FireSimulation(Simulation):
         and all mitigations to initial conditions
         """
         self._create_fire_map()
+        #edit: create agent nparray
         self._reset_agents()
         self._create_terrain()
         self._create_fire()
@@ -216,15 +219,28 @@ class FireSimulation(Simulation):
         self.fire_status: GameStatus = GameStatus.RUNNING
         self.active = True
 
+    #reset all agents
     def _reset_agents(self) -> None:
         """
         Reset agents settings back to initial
-        """
+        """ 
         self.agents.clear()
         self._create_agent_positions()
 
+        #edit: agent_id will help determine the type of agent we are using. (Firefighter,
+        #dozer etc). Currently only fireigther is supported 
+        agent_id = 1
+        for x, y in self.config.agents.firefighter.spawn_points:
+            self.agents[agent_id] = Agent((x,y), 
+            self.config.agents.firefighter.size, 
+            self.config.simulation.headless)
+            agent_id += 1
+
+            #array of all agent positions
+            self.agent_positions[y][x] = agent_id
+
     def _create_terrain(self) -> None:
-        """
+        """ 
         Initialize the terrain.
         """
         self.fuel_particle = FuelParticle()
@@ -305,7 +321,8 @@ class FireSimulation(Simulation):
             "scratchline": BurnStatus.SCRATCHLINE,
             "wetline": BurnStatus.WETLINE,
         }
-
+    
+    #Returns all possible categories that a location in the map can be in.
     @property
     def disaster_categories(self) -> Iterable[BurnStatus]:
         """
@@ -334,6 +351,7 @@ class FireSimulation(Simulation):
             "wind_direction",
         ]
 
+    #returns bounds
     def get_attribute_bounds(self) -> Dict[str, object]:
         """
         Return the observation space bounds for the fire simulation
@@ -491,13 +509,15 @@ class FireSimulation(Simulation):
         for column, row, agent_id in points:
             # Resets current agent positions to 0 before updating the new positions
             self.agent_positions[self.agent_positions == agent_id] = 0
+            #sets new position for agent with id: agent_id
             self.agent_positions[row][column] = agent_id
             try:
                 self.agents[agent_id].pos = (column, row)
+            #if first time spawning the agent
             except KeyError:
                 self.agents[agent_id] = Agent(
                     (column, row),
-                    size=self.config.display.agent_size,
+                    size=self.config.agents.agent_size,
                     headless=self.config.simulation.headless,
                 )
 
@@ -536,8 +556,7 @@ class FireSimulation(Simulation):
         self.elapsed_time = self.fire_manager.elapsed_time
 
         while self.fire_status == GameStatus.RUNNING and num_updates < total_updates:
-            
-            print("Printing: Method - Run, Class FireSimulation, simulation.py")
+            #Normally self.fire_manager
             self.fire_sprites = self.fire_manager.sprites
             self.fire_map, self.fire_status = self.fire_manager.update(self.fire_map)
             if self._rendering:
@@ -559,6 +578,7 @@ class FireSimulation(Simulation):
 
         return self.fire_map, self.active
 
+    #Resets fire_map to UNBURNED excpect for fire's starting position, which is BURNING
     def _create_fire_map(self) -> None:
         """
         Resets the `self.fire_map` attribute to entirely `BurnStatus.UNBURNED`,
@@ -578,6 +598,7 @@ class FireSimulation(Simulation):
         """
         self.agent_positions = np.zeros_like(self.fire_map)
 
+    #Returns the available randomization seeds for the simulation.
     def get_seeds(self) -> Dict[str, Optional[int]]:
         """
         Returns the available randomization seeds for the simulation.
@@ -765,6 +786,7 @@ class FireSimulation(Simulation):
                 success = False
         return success
 
+    #Manually set the fire intial position for a static fire.
     def set_fire_initial_position(self, pos: Tuple[int, int]) -> None:
         """
         Manually set the fire intial position for a static fire.
@@ -1001,7 +1023,8 @@ class FireSimulation(Simulation):
         all_contol_line_sprites = (
             self.fireline_sprites + self.scratchline_sprites + self.wetline_sprites
         )
-        agent_sprites = list(self.agents.values())
+        #agent_sprites is a list of all Agent objects
+        agent_sprites = list(self.agents.values()) # == [Agent(...), Agent(...), ]
         self._game.update(
             self.terrain,
             self.fire_sprites,

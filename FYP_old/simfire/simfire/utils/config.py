@@ -7,7 +7,7 @@ import os
 import random
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union, List
 
 import numpy as np
 import yaml  # type: ignore
@@ -124,6 +124,10 @@ class MitigationConfig:
     def __post_init__(self) -> None:
         self.ros_attenuation = bool(self.ros_attenuation)
 
+@dataclasses.dataclass
+class AgentTypeConfig:
+    agent_size: int
+    spawn_points: List[Tuple[int, int]]
 
 @dataclasses.dataclass
 class OperationalConfig:
@@ -260,6 +264,7 @@ class Config:
         self.display = self._load_display()
         self.simulation = self._load_simulation()
         self.mitigation = self._load_mitigation()
+        self.agents = self._load_agents()
         self.operational = self._load_operational()
         self.terrain = self._load_terrain()
         self.fire = self._load_fire()
@@ -515,6 +520,17 @@ class Config:
         """
         # No processing needed for the MitigationConfig
         return MitigationConfig(**self.yaml_data["mitigation"])
+
+
+    def _load_agents(self) -> Dict[str, AgentTypeConfig]:
+        agents_raw = self.yaml_data.get("agents", {})
+        agents: Dict[str, AgentTypeConfig] = {}
+        for agent_type, props in agents_raw.items():
+            size = props.get("agent_size", 4)
+            spawns_raw = props.get("spawn_points", [])
+            spawn_points = [tuple(sp) for sp in spawns_raw]
+            agents[agent_type] = AgentTypeConfig(agent_size=size, spawn_points=spawn_points)
+        return agents
 
     def _load_operational(self) -> OperationalConfig:
         """

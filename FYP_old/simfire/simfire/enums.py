@@ -69,10 +69,12 @@ class BurnStatus(IntEnum):
     WETLINE: int = auto()
 
 
+#DataClass lets do easily instantiate an object (rarely) and then modify it later easily, while 
+#(for example) burn status does not need to be modified later 
 @dataclass
 class RoSAttenuation:
     """The factor by which to attenuate the rate of spread (RoS), based on control line
-    type
+    type 
 
     The only classes that are attenuated are the different control lines:
         - FIRELINE
@@ -251,7 +253,7 @@ COLORS = [
 
 # Line Production
 # {Fuel Model: Chains / person / hour}
-# https://www.nifc.gov/nicc/logistics/references/Wildland%20Fire%20Incident%20Management%20Field%20Guide.pdf
+# https://gacc.nifc.gov/swcc/dc/nmadc/dispatch_logistics/dispatch/documents/2014%20Wildland%20Fire%20Incident%20Management%20Field%20Guide.pdf
 # pg 111
 # Line Production Rates for Initial Action by Hand Crews in Chains per Person per Hour
 # Assume using Fuel Model 13
@@ -280,18 +282,17 @@ HandLineRate = {
 # Dozer Type 3: LIGHT: 50 min Horse Power, [JD-450, JD-550, D-3, D-4]
 
 DozerType = {
-    "D-8": 1,
-    "D-7": 1,
-    "JD-950": 1,
-    "D-5": 2,
-    "D-6N": 2,
-    "JD-750": 2,
-    "JD-450": 3,
-    "JD-550": 3,
-    "D-3": 3,
-    "D-4": 3,
+    "D-8": 1, "D-7": 1, "JD-950": 1,     # Heavy dozers
+    "D-5": 2, "JD-750": 2,               # Medium
+    "D-3": 3, "JD-450": 3, "D-4": 3      # Light
 }
 
+
+#1-13 -> fuel model (defined above) 
+#up, down -> terrain slope direction
+#"up {key: value}" 
+#   key -> steepness rate
+#   value -> chains/hour (production rate)
 DozerLineRates = {
     3: {
         1: {"up": {1: 73, 2: 43, 3: 19, 4: 4}, "down": {1: 100, 2: 100, 3: 55, 4: 10}},

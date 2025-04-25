@@ -33,17 +33,23 @@ def compute_rate_of_spread(
         loc_z: The new z elevation
         w_0: The oven-dry fuel load of the fuel at the new location
         delta: The fuel bed depth of the fuel at the new location
-        M_x: The dead fuel moisture of extinction of the fuel at the new location
+        M_x:    Moisture of extinction - this is a threshold for how much moisture a fuel can 
+                hold before it becomes non-flammable. It is specific to fuel type.
         sigma: The Surface-area-to-volume ratio of the fuel at the new location
         h: The fuel particle low heat content
         S_T: The fuel particle total mineral content
         S_e: The fuel particle effective mineral content
         p_p: The fuel particle oven-dry particle density
-        M_f: The envrionment fuel moisture
+        M_f: 	Environmental fuel moisture - this represents the current moisture 
+                content of the fuel (e.g. grass, shrubs) due to rain, humidity, etc
+            M_f (0.01 = dry, 0.3-0.35 = wet)
         U: The envrionment wind speed
         U_dir: The envrionment wind direction (degrees clockwise from North)
         slope_dir: The angle of the steepest ascent at the location
 
+
+        moisture dampening cooefficent (m_f/M_x)
+        Having M_f = 0.25 when M_x = 0.2 means the fire very likely won’t spread at that location.
     Returns:
         R: The computed rate of spread in ft/min
     """

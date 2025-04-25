@@ -9,7 +9,7 @@ Defines the different `FireManager`s (`ConstantSpreadFireManager` and
 from pathlib import Path 
 import collections
 from dataclasses import astuple
-from typing import Any, List, Optional, Sequence, Tuple, Union
+from typing import Any, List, Optional, Sequence, Tuple, Union, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,7 +20,7 @@ from ...utils.graph import FireSpreadGraph
 from ...utils.log import create_logger
 from ...world.parameters import Environment, FuelParticle
 from ...world.rothermel import compute_rate_of_spread
-from ..sprites import Fire, Terrain
+from ..sprites import Fire, Terrain, Agent, FireLine, ScratchLine, WetLine
 
 log = create_logger(__name__)
 
@@ -100,8 +100,14 @@ class FireManager:
         self.diagonal_spread = diagonal_spread
 
         init_fire = Fire(self.init_pos, self.fire_size, headless=self.headless)
+        #fire_sprites
         self.sprites: List[Fire] = [init_fire]
         self.durations: List[int] = [0]
+        #edit
+        self.agent_sprites: List[Agent]
+        self.fireline_sprites = List[FireLine]
+        self.scratchline_sprites = List[ScratchLine]
+        self.wetline_sprites = List[WetLine]
 
     def update(self, fire_map: np.ndarray) -> Any:
         """
@@ -192,6 +198,7 @@ class FireManager:
             """
             acceptable_statuses = [
                 BurnStatus.UNBURNED,
+                #BurnStatus.BURNING
                 BurnStatus.FIRELINE,
                 BurnStatus.SCRATCHLINE,
                 BurnStatus.WETLINE,
@@ -269,7 +276,8 @@ class FireManager:
             )
             raise AssertionError
 
-        factor = np.zeros_like(rate_of_spread)
+        factor = np.zeros_like(rate_of_spread) #creates array filled w 0's, same dim's as rate_of_spread
+        #attenuate_line_ros = True
         if self.attenuate_line_ros:
             factor[np.where(fire_map == BurnStatus.FIRELINE)] = RoSAttenuation.FIRELINE
             factor[np.where(fire_map == BurnStatus.SCRATCHLINE)] = (
@@ -353,7 +361,7 @@ class RothermelFireManager(FireManager):
             diagonal_spread,
         )
         self.pixel_scale = pixel_scale
-        self.update_rate = update_rate
+        self.update_rate =  _rate
         self.max_time = max_time
         self.elapsed_time = 0.0
         self.fuel_particle = fuel_particle
@@ -449,9 +457,11 @@ class RothermelFireManager(FireManager):
         grad_dir = np.arctan2(grad_y, grad_x + 0.000001)
         return grad_mag, grad_dir
 
+    #edit: Logic for spread of fire WITH agents taken into account
+    #ToDo: Logic for movement of agents after every tick 
     def _accrue_sprites(
-        self, sprite_idx: int, fire_map: np.ndarray
-    ) -> Union[SpriteParamsType, None]:
+        self, sprite_idx: int, fire_map: np.ndarray,
+        agents: dict[int, Agent], agent_positions: np.ndarray) -> Union[SpriteParamsType, None]:
         """
         Pull all neccessary information for the update step in a multiprocessable way.
         This will return a list of lists containing the Rothermel computation information
@@ -461,6 +471,9 @@ class RothermelFireManager(FireManager):
             sprite_idx: position of the sprite
             fire_map: The numpy array that tracks the fire's burn status for
                       each pixel in the simulation
+            edit:
+            agents: array of all firefighters
+            agent_positions: positions of all firefighters
 
         Returns:
             The sprite parameters needed for a Rothermel calculation for each sprite for
@@ -469,40 +482,92 @@ class RothermelFireManager(FireManager):
 
         sprite = self.sprites[sprite_idx]
         x, y = sprite.rect.x, sprite.rect.y
+
+        #new_locs
+        """
+        new_locs = [
+        (11, 20),  # right
+        (11, 21),  # bottom-right
+        (10, 21),  # bottom
+        (9, 21),   # bottom-left
+        (9, 20),   # left
+        (9, 19),   # top-left
+        (10, 19),  # top
+        (11, 19),  # top-right
+        ]
+        """
         new_locs = self._get_new_locs(x, y, fire_map)
         num_locs = len(new_locs)
         if num_locs == 0:
             return None
 
         new_locs_uzip = tuple(zip(*new_locs))
-        new_loc_x = list(int(val) for val in new_locs_uzip[0])
+        """
+        new_locs = ((11, 20), (12, 21), (10, 22))
+        
+        zip(*new_locs) → zip((11, 20), (12, 21), (10, 22))
+              → [(11, 12, 10), (20, 21, 22)]
+        """
+
+        new_loc_x = list(int(val) for val in new_locs_uzip[0]) #new_loc_x = [1,2,12]
         new_loc_y = list(int(val) for val in new_locs_uzip[1])
-        loc_x = [x] * num_locs
-        loc_y = [y] * num_locs
+        loc_x = [x] * num_locs #creates an array, which is duplicate of the fires initial position x, so that we know the fire spread from x to x_new
+        loc_y = [y] * num_locs #for every new fire_location to have loc_x = [5,5,5,5] new_loc_x = [5,6,7,8]
+
+        #accesing all fuel data at these locations 
+        """
+        list_example = [
+            (1, 2, 3, 4),  # Fuel at loc A
+            (5, 6, 7, 8),  # Fuel at loc B
+            (9, 0, 1, 2),  # Fuel at loc C
+        ]
+
+        zip(*list_example) = 
+        [
+            (1, 5, 9),   # w_0 for A, B, C
+            (2, 6, 0),   # delta
+            (3, 7, 1),   # M_x
+            (4, 8, 2),   # sigma
+        ]
+
+
+
+        """
+        #edit w_0, delta
+
         n_w_0, n_delta, n_M_x, n_sigma = list(
-            zip(*[astuple(fuel) for fuel in self.terrain.fuels[new_locs_uzip[::-1]]])
+            zip(*[astuple(fuel) for fuel in self.terrain.fuels[new_locs_uzip[::-1]]]) #::-1 to reverse tuple
         )
+        #self.agents[starts at 1 (id)] 
+
+            
+
         # Set the FuelParticle parameters into arrays
         h = [self.fuel_particle.h] * num_locs
         S_T = [self.fuel_particle.S_T] * num_locs
         S_e = [self.fuel_particle.S_e] * num_locs
         p_p = [self.fuel_particle.p_p] * num_locs
         # Set the Environment parameters into arrays
+        #M_f initialized in YAML
         M_f = [self.environment.M_f] * num_locs
+        for agent_id, agent in agents.items(): #.items?
+            for new_location, (nx, ny) in enumerate(new_locs): #enumerate lets you loop through list and go to next item   
+                #90 meters - around how far firefighters shoot water
+                if (abs(agent.pos[0] - nx) < 4) or (abs(agent.pos[1] - ny) < 4):
+                    M_f[i] = 0.3
+                    break #no need to check other agents if one is already close
+
         U = []
         print(self.U.shape)
         
-        log("method = accrue_sprites")
+        log.info("method = accrue_sprites")
         
         U.extend(list(self.U[new_locs_uzip[::-1]]))
-        folder_path = Path("/home/denizg/FYP_Yr3/simfire/processing_data/wind")
+        folder_path = Path("/home/denizzg/FYP_Yr3/FYP_old/simfire/processing_data/wind")
         folder_path.mkdir(parents=True, exist_ok=True)
         file_path = folder_path / "wind_data.npy"
         np.save(file_path, U)
         print(f"Array saved to: {file_path}")
-
-
-        
         
         U_dir = []
         U_dir.extend(list(self.U_dir[new_locs_uzip[::-1]]))
@@ -561,6 +626,7 @@ class RothermelFireManager(FireManager):
 
         return [arr[i, :] for i in range(arr.shape[0])]
 
+    #this is run once we have already figured out the new fire sprites and their durations
     def _update_with_new_locs(
         self, y_coords: np.ndarray, x_coords: np.ndarray, fire_map: np.ndarray
     ) -> np.ndarray:
