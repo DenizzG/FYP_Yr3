@@ -230,9 +230,9 @@ class FireSimulation(Simulation):
         #edit: agent_id will help determine the type of agent we are using. (Firefighter,
         #dozer etc). Currently only fireigther is supported 
         agent_id = 1
-        for x, y in self.config.agents.firefighter.spawn_points:
+        for (x, y) in self.config.agents["firefighter"].spawn_points: #use this as firefighter is a dict 
             self.agents[agent_id] = Agent((x,y), 
-            self.config.agents.firefighter.size, 
+            self.config.agents["firefighter"].agent_size, 
             self.config.simulation.headless)
             agent_id += 1
 
@@ -558,7 +558,7 @@ class FireSimulation(Simulation):
         while self.fire_status == GameStatus.RUNNING and num_updates < total_updates:
             #Normally self.fire_manager
             self.fire_sprites = self.fire_manager.sprites
-            self.fire_map, self.fire_status = self.fire_manager.update(self.fire_map)
+            self.fire_map, self.fire_status = self.fire_manager.update(self.fire_map, self.agents, self.agent_positions)
             if self._rendering:
                 self._render()
             num_updates += 1

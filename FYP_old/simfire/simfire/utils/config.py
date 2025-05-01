@@ -59,13 +59,11 @@ class AreaConfig:
 class DisplayConfig:
     fire_size: int
     control_line_size: int
-    agent_size: int
     rescale_factor: Optional[int] = None
 
     def __post_init__(self) -> None:
         self.fire_size = int(self.fire_size)
         self.control_line_size = int(self.control_line_size)
-        self.agent_size = int(self.agent_size)
         if self.rescale_factor is not None:
             try:
                 self.rescale_factor = int(self.rescale_factor)

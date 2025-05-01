@@ -62,6 +62,7 @@ class FireManager:
         attenuate_line_ros: bool = True,
         headless: bool = False,
         diagonal_spread: bool = True,
+        agents_enable: bool = False,
     ) -> None:
         """
         Initialize the class by recording the initial fire location and size.
@@ -313,6 +314,7 @@ class RothermelFireManager(FireManager):
         attenuate_line_ros: bool = True,
         headless: bool = False,
         diagonal_spread: bool = True,
+        agents_enable: bool = False,
     ) -> None:
         """
         Initialize the class by recording the initial fire location and size.
@@ -361,12 +363,13 @@ class RothermelFireManager(FireManager):
             diagonal_spread,
         )
         self.pixel_scale = pixel_scale
-        self.update_rate =  _rate
+        self.update_rate = update_rate
         self.max_time = max_time
         self.elapsed_time = 0.0
         self.fuel_particle = fuel_particle
         self.terrain = terrain
         self.environment = environment
+        self.agents_enable = True
 
         # Convert potential constant or nested sequence wind magnitude
         # and directions to numpy arrays with values at each game/terrain
@@ -550,24 +553,22 @@ class RothermelFireManager(FireManager):
         # Set the Environment parameters into arrays
         #M_f initialized in YAML
         M_f = [self.environment.M_f] * num_locs
-        for agent_id, agent in agents.items(): #.items?
-            for new_location, (nx, ny) in enumerate(new_locs): #enumerate lets you loop through list and go to next item   
-                #90 meters - around how far firefighters shoot water
-                if (abs(agent.pos[0] - nx) < 4) or (abs(agent.pos[1] - ny) < 4):
-                    M_f[i] = 0.3
-                    break #no need to check other agents if one is already close
+        if self.agents_enable == True:
+            for agent_id, agent in agents.items(): #.items?
+                #agent_id starts at 1
+                for new_location, (nx, ny) in enumerate(new_locs): #enumerate lets you loop through list and go to next item   
+                    #90 meters - around how far firefighters shoot water
+                    if (abs(agent.pos[0] - nx) + (abs(agent.pos[1] - ny)) < 5):
+                        M_f[new_location] = 0.15
+                        #break #no need to check other agents if one is already close
 
-        U = []
-        print(self.U.shape)
-        
-        log.info("method = accrue_sprites")
-        
+        U = []        
         U.extend(list(self.U[new_locs_uzip[::-1]]))
         folder_path = Path("/home/denizzg/FYP_Yr3/FYP_old/simfire/processing_data/wind")
         folder_path.mkdir(parents=True, exist_ok=True)
         file_path = folder_path / "wind_data.npy"
         np.save(file_path, U)
-        print(f"Array saved to: {file_path}")
+        
         
         U_dir = []
         U_dir.extend(list(self.U_dir[new_locs_uzip[::-1]]))
@@ -693,7 +694,8 @@ class RothermelFireManager(FireManager):
 
         return fig
 
-    def update(self, fire_map: np.ndarray) -> Tuple[np.ndarray, GameStatus]:
+    def update(self, fire_map: np.ndarray,
+               agents: dict[int, Agent], agent_positions: np.ndarray) -> Tuple[np.ndarray, GameStatus]:
         """
         Update the spreading of the fires. This function will remove
         any fires that have exceded their duration and will spread fires
@@ -709,7 +711,7 @@ class RothermelFireManager(FireManager):
         """
         # Remove all fires that are past the max duration
         
-        print("updated")
+        
         self._prune_sprites(fire_map)
         # Increment the durations
         self.durations = list(map(lambda x: x + 1, self.durations))
@@ -727,7 +729,7 @@ class RothermelFireManager(FireManager):
         sprite_idxs = list(range(num_sprites))
 
 
-        all_params = [self._accrue_sprites(idx, fire_map) for idx in sprite_idxs]
+        all_params = [self._accrue_sprites(idx, fire_map, agents, agent_positions) for idx in sprite_idxs]
         all_params = list(filter(None, all_params))
 
         # Sprites exist, but there are no new locations to spread to

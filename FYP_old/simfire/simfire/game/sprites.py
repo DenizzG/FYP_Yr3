@@ -426,9 +426,9 @@ class Agent(pygame.sprite.Sprite):
         else:
             if self.agent_color is None:
                 self.agent_color = np.zeros((self.size, self.size, 3))
-                self.agent_color[:, :, 0] = 221
-                self.agent_color[:, :, 1] = 160
-                self.agent_color[:, :, 2] = 221
+                self.agent_color[:, :, 0] = 0
+                self.agent_color[:, :, 1] = 0
+                self.agent_color[:, :, 2] = 255
             self.image = pygame.surfarray.make_surface(self.agent_color)
             self.rect = self.image.get_rect()
             self.rect.update(*(self.pos + (size, size)))

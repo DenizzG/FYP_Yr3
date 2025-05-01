@@ -24,10 +24,10 @@ mitigation:
 
 agents:
   firefighter:
-    agent_size: 4
+    agent_size: 1
     spawn_points:
-        [50, 50]
-        [70, 70]
+        [[60, 20],
+        ]
 
   dozer:
     agent_size: 6

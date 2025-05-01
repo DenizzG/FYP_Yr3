@@ -39,7 +39,7 @@ logger.addHandler(handler)
 logger.propagate = False
 
 
-class MARLReactiveHarness(RLHarness):  # noqa: D205,D212,D415
+class MARLReactiveHarness(  ):  # noqa: D205,D212,D415
     """
     ### Description
     Environment which potrays the case where a fire has already started and we are

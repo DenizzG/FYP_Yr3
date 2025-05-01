@@ -27,7 +27,7 @@ class TestFireManager(unittest.TestCase):
 
     def test_update(self) -> None:
         """Test that the call to update() just passes"""
-        print("test_update")
+        
         self.assertIsNone(
             self.fire_manager.update(np.array([[1]])),
             msg="The FireManager.update() method should return None",
