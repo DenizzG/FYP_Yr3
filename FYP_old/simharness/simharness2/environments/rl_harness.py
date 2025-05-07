@@ -78,7 +78,7 @@ class RLHarness(MultiAgentEnv, ABC):
 
     def __init__(
         self,
-        sim: FireSimulation,
+        sim:    ,
         movements: List[str],
         interactions: List[str],
         attributes: List[str],

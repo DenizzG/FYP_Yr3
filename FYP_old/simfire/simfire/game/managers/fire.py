@@ -559,7 +559,7 @@ class RothermelFireManager(FireManager):
                 for new_location, (nx, ny) in enumerate(new_locs): #enumerate lets you loop through list and go to next item   
                     #90 meters - around how far firefighters shoot water
                     if (abs(agent.pos[0] - nx) + (abs(agent.pos[1] - ny)) < 5):
-                        M_f[new_location] = 0.15
+                        M_f[new_location] = 0.3
                         #break #no need to check other agents if one is already close
 
         U = []        
