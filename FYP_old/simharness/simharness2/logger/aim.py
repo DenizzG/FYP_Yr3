@@ -1,4 +1,15 @@
 """Module for using Aim with SimHarness2."""
+"""
+You can track training progress in real time with Aim’s nice web interface.
+
+Helps in debugging and comparing different RL setups.
+
+Makes your research more reproducible by logging configurations and hyperparameters.
+
+Allows logging of visual data (GIFs of episodes) for better insights into what the agents are doing.
+
+
+"""
 import logging
 from functools import partial
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union

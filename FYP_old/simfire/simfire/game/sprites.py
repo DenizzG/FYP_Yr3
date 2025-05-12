@@ -391,9 +391,28 @@ class Agent(pygame.sprite.Sprite):
     This sprite represents an agent (e.g. firefighter, mitigation unit) on one pixel of the terrain.
     Its image is generally kept very small to make rendering easier.
     All agent movement and logic are handled by the simulation or an external controller.
+
+    agent_id : int
+        The unique ID of this agent.
+    sim_id : int
+        The unique ID of the simulation this agent belongs to.
+    initial_position : tuple[int, int]
+        The (x,y) starting position of the agent, where (0,0) is the top-left corner of
+        the map and (max_x, max_y) is the bottom-right corner of the map.
+
+    latest_movement : str or None
+        The last movement made by the agent, if applicable.
+    latest_interaction : str or None
+        The last interaction had by the agent, if applicable.
+    mitigation_placed : bool
+        Whether the agent has placed any mitigations recently.
+    moved_off_map : bool
+        Whether the agent has moved off the map recently.
+
     """
 
-    def __init__(self, pos: Tuple[int, int], size: int, headless: bool = False) -> None:
+    def __init__(self, pos: Tuple[int, int], size: int, headless: bool = False, 
+                 agent_id: str, sim_id: int, fire_map_shape: Tuple[int, int]) -> None:
         """
         Initialize the class by recording the position and size of the sprite
         and creating a solid color texture.
@@ -406,10 +425,19 @@ class Agent(pygame.sprite.Sprite):
         """
         super().__init__()
 
+        #sim_id tells you which simulation instance the agent belongs to
+        self.sim_id = sim_id #contained inside sim.agents.keys(), 
+        self.agent_id = agent_id
         self._pos = pos
         self.agent_color: Optional[np.ndarray] = None
         self.size = size
         self.headless = headless
+
+        self._previous_position: Tuple[int,int] = None 
+        self.latest_movement: int = None
+        self.latest_interaction: int = None
+        self.mitigation_placed: bool = False
+        self.moved_off_map: bool = False
 
         #rect.x, rect.y         # Position (top-left corner)
         #rect.width, rect.height  # Size
@@ -417,6 +445,10 @@ class Agent(pygame.sprite.Sprite):
         #rect.colliderect(other_rect)  # Check if it overlaps with another
            
         self.rect: pygame.rect.Rect 
+
+        # Create array used to store coords adjacent to "true" mitigations placed by.
+        self.adj_to_mitigation = np.zeros(self.fire_map_shape, dtype=bool)
+
 
         if self.headless: #if not running on a server (always for this application)
             self.image = None
@@ -440,10 +472,30 @@ class Agent(pygame.sprite.Sprite):
     def pos(self) -> Tuple[int, int]:
         return self._pos
 
+    @property
+    def previous_position(self) -> Tuple[int, int]:
+        return self._previous_position
+
     @pos.setter
     def pos(self, value: Tuple[int, int]) -> None:
+        self._previous_position = self.pos
         self._pos = value
         self.rect.update(*(self.pos + (self.size, self.size)))
+
+    @property
+    def x(self) -> int:
+        return self._pos[0]
+
+    @property
+    def y(self) -> int:
+        return self._pos[1]
+
+    def reset(self):
+        self.latest_movement = None
+        self.latest_interaction = None
+        self.mitigation_placed = False
+        self.moved_off_map = False
+        self.__init__()
 
     def update(self, *args, **kwargs) -> None:
         """

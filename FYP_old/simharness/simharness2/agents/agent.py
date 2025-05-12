@@ -13,6 +13,7 @@ logger.addHandler(handler)
 logger.propagate = False
 
 
+#automatically generates an init class for you
 @dataclass
 class ReactiveAgent:
     """A simple agent that reacts to its environment.
@@ -72,6 +73,7 @@ class ReactiveAgent:
         # Create array used to store coords adjacent to "true" mitigations placed by.
         self.adj_to_mitigation = np.zeros(self.fire_map_shape, dtype=bool)
 
+    #@property acts as though it is an attribute but it is a method
     @property
     def previous_position(self) -> Tuple[int, int]:
         return self._previous_position

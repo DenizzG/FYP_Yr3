@@ -1,4 +1,7 @@
-"""Custom model for running on multimodel data"""
+"""
+Custom model for running on multimodel data
+Libraries installed: YES
+"""
 
 from typing import Dict, List, Tuple
 

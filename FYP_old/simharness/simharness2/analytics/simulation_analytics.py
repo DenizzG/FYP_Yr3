@@ -124,7 +124,7 @@ class SimulationData:
                     self.total_damaged = damaged_ts
 
     def save_episode_history(self, output_dir: str, env_id: str) -> None:
-        """Save episode history to CSV file."""
+         """Save episode history to CSV file."""
         if self._history is None:
             return
 
