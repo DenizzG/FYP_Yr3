@@ -494,8 +494,20 @@ class Agent(pygame.sprite.Sprite):
         self.latest_movement = None
         self.latest_interaction = None
         self.mitigation_placed = False
-        self.moved_off_map = False
         self.__init__()
+def Actions(self, action: str) -> None:
+    """
+    Store the action to be executed later during the simulation update.
+
+    Args:
+        action (str): One of 'up', 'down', 'left', 'right', 'fireline', 'wetline', or 'scratchline'.
+    """
+    valid_actions = {"up", "down", "left", "right", "fireline", "wetline", "scratchline"}
+    if action in valid_actions:
+        self.latest_interaction = action
+    else:
+        log.warning(f"Invalid action '{action}' for agent {self.agent_id}")
+        
 
     def update(self, *args, **kwargs) -> None:
         """

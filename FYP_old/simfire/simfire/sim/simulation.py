@@ -467,7 +467,7 @@ class FireSimulation(Simulation):
         warnings.warn(message)
         log.warning(message)
 
-    def update_mitigation(self, points: Iterable[Tuple[int, int, int]]) -> None:
+    def update_mitigation(self) -> None:
         """
         Update the `self.fire_map` with new mitigation points
 
@@ -475,30 +475,29 @@ class FireSimulation(Simulation):
             points: A list of `(column, row, mitigation)` tuples. These will be added to
                    `self.fire_map`.
         """
-        firelines = []
-        scratchlines = []
-        wetlines = []
+        firelines: List[Tuple[int, int]] = []
+        scratchlines: List[Tuple[int, int]] = []
+        wetlines: List[Tuple[int, int]] = []
 
         # Loop through all points, and add the mitigations to their respective lists
-        for i, (column, row, mitigation) in enumerate(points):
-            if mitigation == BurnStatus.FIRELINE:
-                firelines.append((column, row))
-            elif mitigation == BurnStatus.SCRATCHLINE:
-                scratchlines.append((column, row))
-            elif mitigation == BurnStatus.WETLINE:
-                wetlines.append((column, row))
-            else:
-                log.warning(
-                    f"The mitigation,{mitigation}, provided at location[{i}] is "
-                    "not an available mitigation strategy... Skipping"
-                )
+        for agent_id, agent in self.agents.items():
+            if agent.latest_interaction in {"fireline", "wetline", "scratchline"}:
+                x, y = agent.pos
+                if agent.latest_interaction == "fireline":
+                    firelines.append((y, x))
+                elif agent.latest_interaction == "wetline":
+                    scratchlines.append((y, x))
+                elif agent.latest_interaction == "scratchline":
+                    wetlines.append((y, x))
+                
+        
 
         # Update the self.fire_map using the managers
         self.fire_map = self.fireline_manager.update(self.fire_map, firelines)
         self.fire_map = self.scratchline_manager.update(self.fire_map, scratchlines)
         self.fire_map = self.wetline_manager.update(self.fire_map, wetlines)
 
-    def update_agent_positions(self, points: Iterable[Tuple[int, int, int]]) -> None:
+    def update_agent_positions(self) -> None:
         """
         Update the `self.agent_positions` with new agent positions
 
@@ -506,20 +505,23 @@ class FireSimulation(Simulation):
             points: A list of `(column, row, agent_id)` tuples. These will be added to
                     `self.agent_positions`.
         """
-        for column, row, agent_id in points:
-            # Resets current agent positions to 0 before updating the new positions
+        for agent_id, agent in self.agents.items():
+        if agent.latest_interaction in {"up", "down", "left", "right"}:
+            x, y = agent.pos
+            if agent.latest_interaction == "up" and y > 0:
+                y -= 1
+            elif agent.latest_interaction == "down" and y < self.agent_positions.shape[0] - 1:
+                y += 1
+            elif agent.latest_interaction == "left" and x > 0:
+                x -= 1
+            elif agent.latest_interaction == "right" and x < self.agent_positions.shape[1] - 1:
+                x += 1
+
+            # Update the agent's position in the simulation
             self.agent_positions[self.agent_positions == agent_id] = 0
-            #sets new position for agent with id: agent_id
-            self.agent_positions[row][column] = agent_id
-            try:
-                self.agents[agent_id].pos = (column, row)
-            #if first time spawning the agent
-            except KeyError:
-                self.agents[agent_id] = Agent(
-                    (column, row),
-                    size=self.config.agents.agent_size,
-                    headless=self.config.simulation.headless,
-                )
+            self.agent_positions[y, x] = agent_id
+            agent.pos = (x, y)
+            
 
     def run(self, time: Union[str, int]) -> Tuple[np.ndarray, bool]:
         print("Printing: Method - Run, Class FireSimulation, simulation.py", flush=True)
@@ -557,6 +559,10 @@ class FireSimulation(Simulation):
 
         while self.fire_status == GameStatus.RUNNING and num_updates < total_updates:
             #Normally self.fire_manager
+
+            self.update_agent_positions()
+            self.update_mitigation()
+
             self.fire_sprites = self.fire_manager.sprites
             self.fire_map, self.fire_status = self.fire_manager.update(self.fire_map, self.agents, self.agent_positions)
             if self._rendering:
