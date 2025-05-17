@@ -14,8 +14,8 @@ harness_analytics_partial:
     agent_analytics_partial:
       _target_: simharness2.analytics.agent_analytics.ReactiveAgentAnalytics
       _partial_: true
-      movement_types: ${....movements}
-      interaction_types: ${....interactions}
+      #movement_types: ${....movements}
+      #interaction_types: ${....interactions}
       # TODO: Only saves when environment is rendering, ie `_should_render == True`
       save_history: true
       # history_length

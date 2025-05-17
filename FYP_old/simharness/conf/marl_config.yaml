@@ -1,10 +1,11 @@
 defaults:
-  - simulation: simfire
-  - training: simfire
-  - environment: default
+  - simulation: simfire/default
+  #- simulation: default      # Ensure this file is included if needed
+  - training: default
+  - environment: reactive_marl
   - framework: default
   - rollouts: default
-  - evaluation: default
+  - evaluation: evaluation_config/env_config/reactive
   - exploration: default
   # - debugging: default
   - resources: default
@@ -23,11 +24,11 @@ aim:
   log_hydra_config: false
 cli:
   # Specify the run mode. Supported options: train, tune, view
-  mode: ??? # Force command-line override
+  mode: view # Force command-line override
   # Specify the root directory used to save data for the experiment.
   # TODO: Ensure any values that use `data_dir` are properly updated to use
   # /nfs/lslab2/fireline/simharness
-  data_dir: /nfs/lslab2/fireline
+  data_dir: /home/denizzg/FYP_Yr3/FYP_old/outputs
 algo:
   name: DQN
   # The path (str) to the checkpoint directory to use.
@@ -57,7 +58,7 @@ stop_conditions:
 debugging:
   log_level: INFO
   log_sys_usage: True
-  seed: 2000
+  seed: 2000 
   # Prepare debugging settings
   # If no `type` is given, tune's `UnifiedLogger` is used as follows:
   # DEFAULT_LOGGERS = (JsonLogger, CSVLogger, TBXLogger)

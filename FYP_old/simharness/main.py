@@ -9,7 +9,7 @@ Typical usage example:
 
   foo = ClassFoo()
   bar = foo.FunctionBar()
-"""
+
 
 import logging
 import os
@@ -59,12 +59,12 @@ LOGGER = logging.getLogger(__name__)
 
 
 def _set_variable_hyperparameters(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> None:
-    """Override the algo_cfg hyperparameters we would like to tune over.
+    """"""Override the algo_cfg hyperparameters we would like to tune over.
 
     Args:
         algo_cfg (AlgorithmConfig): Config used for training our model.
         cfg (DictConfig): Hydra config with all required parameters.
-    """
+    """"""
     tunables = OmegaConf.to_container(cfg.tunables, resolve=True)
 
     for section_key, param_dict in tunables.items():
@@ -86,7 +86,7 @@ def _set_variable_hyperparameters(algo_cfg: AlgorithmConfig, cfg: DictConfig) ->
 
 
 def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
-    """Iterate through combinations of hyperparameters to find optimal training runs.
+    """"""Iterate through combinations of hyperparameters to find optimal training runs.
 
     Args:
         algo_cfg (AlgorithmConfig): Algorithm config for RLlib.
@@ -94,7 +94,7 @@ def train_with_tune(algo_cfg: AlgorithmConfig, cfg: DictConfig) -> ResultGrid:
     
     Returns:
         ResultGrid: Set of Results objects from running Tuner.fit()
-    """
+    """"""
     trainable_algo_str = cfg.algo.name
     param_space = algo_cfg
 
@@ -143,12 +143,12 @@ def evaluate(algo: Algorithm, cfg: DictConfig) -> None:
 
 
 def train(algo: Algorithm, cfg: DictConfig) -> None:
-    """Train the given algorithm within RLlib.
+    """"""Train the given algorithm within RLlib.
 
     Args:
         algo (Algorithm): Algorithm to train with.
         cfg (DictConfig): Hydra config with all required parameters for training.
-    """
+    """"""
     stop_cond = cfg.stop_conditions
     root_checkpoint_dir = os.path.join(algo.logdir, "checkpoints")
     # Run training loop and print results after each iteration
@@ -188,9 +188,9 @@ def train(algo: Algorithm, cfg: DictConfig) -> None:
             mean_rew = result["episode_reward_mean"]
             LOGGER.info(f"Timesteps: {ts}\nEpisode_Mean_Rewards: {mean_rew}\n")
             break
-    """final_result: _TrainingResult = algo.save(checkpoint_dir=checkpoint_dir)
+    """"""final_result: _TrainingResult = algo.save(checkpoint_dir=checkpoint_dir)
     model_path = final_result.checkpoint.path
-    LOGGER.info(f"The final model has been saved inside directory: {model_path}.")"""
+    LOGGER.info(f"The final model has been saved inside directory: {model_path}.")""""""
     
     checkpoint = Checkpoint.from_directory(checkpoint_dir)
     model_path = checkpoint.to_uri()
@@ -201,7 +201,7 @@ def train(algo: Algorithm, cfg: DictConfig) -> None:
 def _instantiate_config(
     cfg: DictConfig,
 ) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
-    """Instantiate the algorithm config used to build the RLlib training algorithm.
+    """"""Instantiate the algorithm config used to build the RLlib training algorithm.
 
     Args:
         cfg (DictConfig): Hydra config with all required parameters.
@@ -212,9 +212,9 @@ def _instantiate_config(
         eval_settings: Parameters needed for running the evaluation code.
         debug_settings: Settings needed for debugging.
         exploration_cfg: RLlib exploration configurations.
-    """
+    """"""
     # Assume eval env cfg takes train env cfg, then overrides with eval k,v pairs.
-    breakpoint()
+    #breakpoint()
     train_env_cfg = OmegaConf.to_container(cfg.environment.env_config)
     eval_env_cfg = OmegaConf.to_container(cfg.evaluation.evaluation_config.env_config)
     eval_env_cfg = merge_dicts(train_env_cfg, eval_env_cfg)
@@ -254,14 +254,14 @@ def _instantiate_config(
 
 
 def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
-    """Build the algorithm config and object for training an RLlib model.
+    """"""Build the algorithm config and object for training an RLlib model.
 
     Args:
         cfg (DictConfig): Hydra config with all required parameters.
 
     Returns:
         Tuple(Algorithm, AlgorithmConfig): Training algorithm and associated config.
-    """
+    """"""
     # Instantiate everything necessary for creating the algorithm config.
     env_settings, eval_settings, debug_settings, explore_cfg = _instantiate_config(cfg)
 
@@ -311,19 +311,19 @@ def _build_algo_cfg(cfg: DictConfig) -> Tuple[Algorithm, AlgorithmConfig]:
     return algo_cfg
 
 
-@hydra.main(version_base=None, config_path="conf", config_name="config")
+@hydra.main(version_base=None, config_path="conf", config_name="marl_config")
 def main(cfg: DictConfig) -> None:
-    """Main entry-point for training a SimHarness model with RLlib.
+    """"""Main entry-point for training a SimHarness model with RLlib.
 
     Args:
         cfg (DictConfig): Hydra config with all required parameters for training.
-    """
+    """"""
     # NOTE: We are disabling logging to the driver. For reference, see
     # https://docs.ray.io/en/latest/ray-observability/user-guides/configure-logging.html#disable-logging-to-the-driver
     # Thus, to use an existing ray cluster, we must set address="auto".
     # Start the Ray runtime
     # ray.init(address="auto", log_to_driver=False)
-    breakpoint()
+    #breakpoint()
     
     ray.init(address="local")
     hydra_cfg = HydraConfig.get()
@@ -370,6 +370,51 @@ def main(cfg: DictConfig) -> None:
 
 if __name__ == "__main__":
     os.environ["SDL_VIDEODRIVER"] = "dummy"
-    breakpoint()
+    #breakpoint()
     main()
-    
+    """
+
+import logging
+import os
+from hydra import main
+from hydra.core.hydra_config import HydraConfig
+from omegaconf import DictConfig
+from simharness2.environments.reactive_marl import MARLReactiveHarness
+
+LOGGER = logging.getLogger(__name__)
+
+@main(version_base=None, config_path="conf", config_name="marl_config")
+def main(cfg: DictConfig) -> None:
+    """Main entry-point for running a reactive environment."""
+    hydra_cfg = HydraConfig.get()
+    storage_path = hydra_cfg.run.dir
+    LOGGER.info(f"Configuration files for this job can be found at {storage_path}.")
+
+    # Initialize the reactive environment
+    LOGGER.info("Initializing the reactive environment...")
+    env = MARLReactiveHarness(config=cfg.environment.env_config)
+
+    # Run the environment (example logic)
+    LOGGER.info("Running the reactive environment...")
+    obs = env.reset()
+    done = False
+    while not done:
+        actions = {agent_id: env.action_space.sample() for agent_id in env.agents}
+        obs, rewards, done, info = env.step(actions)
+        LOGGER.info(f"Step results: {obs}, {rewards}, {done}, {info}") 
+
+
+    """for episode in range(cfg.run.num_episodes):
+        obs = env.reset()
+        done = False
+        while not done:
+            # Example: Random actions (replace with your reactive logic)
+            actions = {agent_id: env.action_space.sample() for agent_id in env.agents}
+            obs, rewards, done, info = env.step(actions)
+            LOGGER.info(f"Step results: {obs}, {rewards}, {done}, {info}")"""
+
+    LOGGER.info("Reactive environment run completed.")
+
+if __name__ == "__main__":
+    os.environ["SDL_VIDEODRIVER"] = "dummy"
+    main()

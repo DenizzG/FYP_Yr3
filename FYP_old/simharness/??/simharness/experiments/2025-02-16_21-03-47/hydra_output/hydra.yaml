@@ -133,7 +133,7 @@ hydra:
     - path: /home/denizg/FYP_Yr3/simharness/conf
       schema: file
       provider: main
-    - path: ''
+    - path: '/home/denizzg/FYP_Yr3/FYP_old/outputs'
       schema: structured
       provider: schema
     output_dir: /home/denizg/FYP_Yr3/simharness/??/simharness/experiments/2025-02-16_21-03-47

@@ -3,7 +3,7 @@ sim_init_cfg:
   simfire_cls:
     _target_: hydra.utils.get_class
     path: simfire.sim.simulation.FireSimulation
-  config_dict: ${simulation.simfire}
+  config_dict: ${simulation}
 
 movements: [none, up, down, left, right]
 interactions: [none, fireline]
@@ -28,7 +28,7 @@ harness_analytics_partial:
     _partial_: true
     # Defines the class that will be used to monitor and track agent behavior.
     agent_analytics_partial:
-      _target_: simharness2.analytics.agent_analytics.ReactiveAgentAnalytics
+      _target_: simharness2.analytics.agent_analytics.Re activeAgentAnalytics
       _partial_: true
       movement_types: ${....movements}
       interaction_types: ${....interactions}
@@ -39,6 +39,28 @@ reward_init_cfg:
     path: simharness2.rewards.base_reward.SimpleReward
   kwargs: null
 
-action_space_cls:
-  _target_: hydra.utils.get_class
-  path: gymnasium.spaces.Discrete
+env_config:
+  sim: ${..sim_init_cfg}
+  num_agents: ${..num_agents}
+  agent_speed: ${..agent_speed}
+  agent_initialization_cls: ${..agent_initialization_cls}
+  agent_initialization_kwargs: ${..agent_initialization_kwargs}
+  movements: ${..movements}
+  interactions: ${..interactions}
+  attributes: ${..attributes}
+  normalized_attributes: ${..normalized_attributes}
+  reward_init_cfg: ${..reward_init_cfg}
+  harness_analytics_partial: ${..harness_analytics_partial}
+  action_space_cls:
+      _target_: hydra.utils.get_class
+      path: gymnasium.spaces.Discrete
+  worker_index: 0
+  vector_index: 0
+  remote: false
+  num_workers: 0
+  #action_space_partial:
+  #  _target_: functools.partial
+  #  func:
+  #    _target_: hydra.utils.get_class
+  #    path: gymnasium.spaces.Discrete
+  #  args: [10]

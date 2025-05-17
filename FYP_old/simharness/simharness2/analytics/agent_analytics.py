@@ -1,4 +1,4 @@
- """TODO: A brief description of the module and its purpose.
+"""TODO: A brief description of the module and its purpose.
 
 TODO: Add a list of any classes, exception, functions, and any other objects exported by
 the module.

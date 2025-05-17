@@ -1,7 +1,7 @@
 area:
   screen_size:
     _target_: builtins.tuple
-    _args_: [["${simulation.screen_height}", "${simulation.screen_width}"]]
+    _args_: [[128,128]]
   pixel_scale: 50
 
 display:
@@ -10,7 +10,18 @@ display:
   agent_size: 4
   rescale_factor: 4
 
+operational:
+  seed:
+  latitude: 36.09493 # top left corner
+  longitude: -120.52193 # top left corner
+  height: ${..simulation.screen_height}
+  width: ${..simulation.screen_width}
+  resolution: 30
+  year: 2019
+
 simulation:
+  screen_height: 128  # Define the screen height
+  screen_width: 128   # Define the screen width
   update_rate: 1
   runtime: 15hr
   headless: true
@@ -23,15 +34,6 @@ simulation:
 
 mitigation:
   ros_attenuation: false
-
-operational:
-  seed:
-  latitude: 36.09493 # top left corner
-  longitude: -120.52193 # top left corner
-  height: ${operational_screen_size:${simulation.screen_height}}
-  width: ${operational_screen_size:${simulation.screen_width}}
-  resolution: 30
-  year: 2019
 
 terrain:
   topography:

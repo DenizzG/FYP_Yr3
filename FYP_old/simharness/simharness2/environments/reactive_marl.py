@@ -28,6 +28,7 @@ from simharness2.analytics.harness_analytics import ReactiveHarnessAnalytics
 from simharness2.environments.rl_harness import RLHarness
 from simharness2.rewards.base_reward import BaseReward
 from simharness2.agents import ReactiveAgent
+from hydra.utils import instantiate
 
 # FIXME: Update logger configuration.
 logger = logging.getLogger(__name__)
@@ -121,7 +122,6 @@ class MARLReactiveHarness(  ):  # noqa: D205,D212,D415
         self.timesteps: int = 0
 
         action_space_partial: partial = config.get("action_space_partial")
-        # Ensure the provided `action_space_partial` has a `func` attribute.
         if not isinstance(action_space_partial, partial):
             raise TypeError(
                 f"Expected `action_space_partial` to be an instance of "
@@ -511,26 +511,26 @@ class MARLReactiveHarness(  ):  # noqa: D205,D212,D415
 
             self.benchmark_sim.run(1)
 
-            #update the benchsim metrics at this timesteps_copy in the harness analytics
+            # Update the benchsim metrics at this timesteps_copy in the harness analytics
             if self.harness_analytics:     
                 self.harness_analytics.update_bench_after_one_simulation_step(
-            timestep=timesteps_copy
-            )
+                    timestep=timesteps_copy
+                )
 
-            #update timesteps_copy to next time the simulation with the agent will update
+            # Update timesteps_copy to next time the simulation with the agent will update
             timesteps_copy = timesteps_copy + self.agent_speed
 
-           #update the size of self.bench_firemaps if this benchmark simulation has lasted longer than any previous benchmark simulations
-           if ((self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1) > (self.max_bench_length - 1):
+            # Update the size of self.bench_firemaps if this benchmark simulation has lasted longer than any previous benchmark simulations
+            if ((self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1) > (self.max_bench_length - 1):
 
-                #append the bench fire map to the self.bench_firemaps
+                # Append the bench fire map to the self.bench_firemaps
                 self.bench_firemaps.append(np.copy(self.benchmark_sim.fire_map))
 
-                #update the max length of the benchsim when defining future lists for self.bench_firemaps
+                # Update the max length of the benchsim when defining future lists for self.bench_firemaps
                 self.max_bench_length = self.max_bench_length + 1
 
-           #else store the bench fire map at the sim step
-           else:
+            # Else store the bench fire map at the sim step
+            else:
                 self.bench_firemaps[(self.harness_analytics.benchmark_sim_analytics.num_sim_steps) - 1] = np.copy(self.benchmark_sim.fire_map)
 
     def _update_state(self):

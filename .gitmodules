@@ -1,0 +1,3 @@
+[submodule "FYP_old/simharness/FYP_old/simharness/simfire"]
+	path = FYP_old/simharness/FYP_old/simharness/simfire
+	url = https://github.com/mitrefireline/simfire.git
