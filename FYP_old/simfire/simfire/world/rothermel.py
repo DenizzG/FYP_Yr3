@@ -27,10 +27,8 @@ def compute_rate_of_spread(
     Arguments:
         loc_x: The current x location
         loc_y: The current y location
-        loc_z: The current z elevation
-        loc_x: The new x location
-        loc_y: The new y location
-        loc_z: The new z elevation
+        new_loc_x: The new x location
+        new_loc_y: The new y location
         w_0: The oven-dry fuel load of the fuel at the new location
         delta: The fuel bed depth of the fuel at the new location
         M_x:    Moisture of extinction - this is a threshold for how much moisture a fuel can 

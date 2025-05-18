@@ -23,6 +23,13 @@ simulation:
 mitigation:
   ros_attenuation: false
 
+agents:
+  firefighter:
+    agent_size: 1
+    spawn_points:
+      [[60, 20],
+      ]
+
 operational:
   seed:
   latitude: 38.422 # top left corner

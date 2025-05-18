@@ -2,6 +2,7 @@ import json
 import sys
 import os
 import warnings
+import pandas as pd
 from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import IntEnum
@@ -230,12 +231,14 @@ class FireSimulation(Simulation):
         #edit: agent_id will help determine the type of agent we are using. (Firefighter,
         #dozer etc). Currently only fireigther is supported 
         agent_id = 1
-        for (x, y) in self.config.agents["firefighter"].spawn_points: #use this as firefighter is a dict 
-            self.agents[agent_id] = Agent((x,y), 
-            self.config.agents["firefighter"].agent_size, 
-            self.config.simulation.headless)
-            agent_id += 1
-
+        for agent_id, (x, y) in enumerate(self.config.agents["firefighter"].spawn_points): #use this as firefighter is a dict 
+            self.agents[agent_id] = Agent(
+                (x,y), 
+                self.config.agents["firefighter"].agent_size,
+                agent_id,
+                self.config.area.screen_size,
+                self.config.simulation.headless
+            )
             #array of all agent positions
             self.agent_positions[y][x] = agent_id
 
@@ -244,7 +247,6 @@ class FireSimulation(Simulation):
         Initialize the terrain.
         """
         self.fuel_particle = FuelParticle()
-
         self.terrain = Terrain(
             self.config.terrain.fuel_layer,
             self.config.terrain.topography_layer,
@@ -484,12 +486,11 @@ class FireSimulation(Simulation):
             if agent.latest_interaction in {"fireline", "wetline", "scratchline"}:
                 x, y = agent.pos
                 if agent.latest_interaction == "fireline":
-                    firelines.append((y, x))
+                    firelines.append((x, y))
                 elif agent.latest_interaction == "wetline":
-                    scratchlines.append((y, x))
+                    scratchlines.append((x, y))
                 elif agent.latest_interaction == "scratchline":
-                    wetlines.append((y, x))
-                
+                    wetlines.append((x, y)) 
         
 
         # Update the self.fire_map using the managers
@@ -497,31 +498,12 @@ class FireSimulation(Simulation):
         self.fire_map = self.scratchline_manager.update(self.fire_map, scratchlines)
         self.fire_map = self.wetline_manager.update(self.fire_map, wetlines)
 
+
     def update_agent_positions(self) -> None:
-        """
-        Update the `self.agent_positions` with new agent positions
-
-        Arguments:
-            points: A list of `(column, row, agent_id)` tuples. These will be added to
-                    `self.agent_positions`.
-        """
         for agent_id, agent in self.agents.items():
-        if agent.latest_interaction in {"up", "down", "left", "right"}:
-            x, y = agent.pos
-            if agent.latest_interaction == "up" and y > 0:
-                y -= 1
-            elif agent.latest_interaction == "down" and y < self.agent_positions.shape[0] - 1:
-                y += 1
-            elif agent.latest_interaction == "left" and x > 0:
-                x -= 1
-            elif agent.latest_interaction == "right" and x < self.agent_positions.shape[1] - 1:
-                x += 1
+            if agent.latest_movement in {"up", "down", "left", "right"}:
+                agent.update()
 
-            # Update the agent's position in the simulation
-            self.agent_positions[self.agent_positions == agent_id] = 0
-            self.agent_positions[y, x] = agent_id
-            agent.pos = (x, y)
-            
 
     def run(self, time: Union[str, int]) -> Tuple[np.ndarray, bool]:
         print("Printing: Method - Run, Class FireSimulation, simulation.py", flush=True)
@@ -558,17 +540,19 @@ class FireSimulation(Simulation):
         self.elapsed_time = self.fire_manager.elapsed_time
 
         while self.fire_status == GameStatus.RUNNING and num_updates < total_updates:
+
             #Normally self.fire_manager
 
-            self.update_agent_positions()
+            #self.update_agent_positions()
             self.update_mitigation()
-
             self.fire_sprites = self.fire_manager.sprites
             self.fire_map, self.fire_status = self.fire_manager.update(self.fire_map, self.agents, self.agent_positions)
+            
+            
             if self._rendering:
                 self._render()
             num_updates += 1
-
+            
             # elapsed_time is in minutes
             self.elapsed_time = self.fire_manager.elapsed_time
 
@@ -579,6 +563,9 @@ class FireSimulation(Simulation):
             # each update
             if self.config.simulation.save_data:
                 self._save_data()
+
+            
+
 
         self.active = True if self.fire_status == GameStatus.RUNNING else False
 
@@ -1030,7 +1017,8 @@ class FireSimulation(Simulation):
             self.fireline_sprites + self.scratchline_sprites + self.wetline_sprites
         )
         #agent_sprites is a list of all Agent objects
-        agent_sprites = list(self.agents.values()) # == [Agent(...), Agent(...), ]
+        agent_sprites = list(self.agents.values()) # == [Agent(...), 
+                                                   #     Agent(...), ]
         self._game.update(
             self.terrain,
             self.fire_sprites,
@@ -1039,6 +1027,7 @@ class FireSimulation(Simulation):
             self.config.wind.speed,
             self.config.wind.direction,
         )
+
         self._game.fire_map = self.fire_map
         self._last_screen = self._game.screen
 

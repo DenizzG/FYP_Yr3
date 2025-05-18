@@ -1,11 +1,11 @@
 # For a description of config parameters, go to
 # https://fireline.pages.mitre.org/simfire/config.html
 area:
-  screen_size: [225, 450] # h, w
+  screen_size: [1, 1] # h, w
   pixel_scale: 50
 
 display:
-  fire_size: 2
+  fire_size: 1
   control_line_size: 2
   rescale_factor: 2
 
@@ -20,15 +20,14 @@ simulation:
   sf_home: "~/.simfire"
 
 mitigation:
-  ros_attenuation: false
+  ros_attenuation: true
 
 agents:
   firefighter:
     agent_size: 1
     spawn_points:
-        [[60, 20],
-        ]
-
+        [[50, 0],
+         [100, 50]]
   dozer:
     agent_size: 6
     spawn_points: []
@@ -38,8 +37,8 @@ operational:
   seed:
   latitude: 38.422 # top left corner
   longitude: -118.266 # top left corner
-  height: 2000 # in meters
-  width: 2000 # in meters
+  height: 10000 # in meters
+  width: 10000 # in meters
   resolution: 30 # in meters
   year: 2020
 
@@ -90,7 +89,7 @@ fire:
   fire_initial_position:
     type: static
     static:
-      position: (25, 25)
+      position: (10, 30)
     random:
       seed: 1234
   max_fire_duration: 5

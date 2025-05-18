@@ -394,8 +394,7 @@ class Agent(pygame.sprite.Sprite):
 
     agent_id : int
         The unique ID of this agent.
-    sim_id : int
-        The unique ID of the simulation this agent belongs to.
+   
     initial_position : tuple[int, int]
         The (x,y) starting position of the agent, where (0,0) is the top-left corner of
         the map and (max_x, max_y) is the bottom-right corner of the map.
@@ -411,8 +410,16 @@ class Agent(pygame.sprite.Sprite):
 
     """
 
-    def __init__(self, pos: Tuple[int, int], size: int, headless: bool = False, 
-                 agent_id: str, sim_id: int, fire_map_shape: Tuple[int, int]) -> None:
+    def __init__(
+        self, 
+        pos: Tuple[int, int], 
+        size: int, 
+        agent_id: str, 
+        #sim_id: int, 
+        fire_map_shape: Tuple[int, int],
+        headless: bool = False, 
+        ) -> None:
+
         """
         Initialize the class by recording the position and size of the sprite
         and creating a solid color texture.
@@ -426,16 +433,18 @@ class Agent(pygame.sprite.Sprite):
         super().__init__()
 
         #sim_id tells you which simulation instance the agent belongs to
-        self.sim_id = sim_id #contained inside sim.agents.keys(), 
+        #self.sim_id = sim_id #contained inside sim.agents.keys(), 
         self.agent_id = agent_id
         self._pos = pos
         self.agent_color: Optional[np.ndarray] = None
         self.size = size
         self.headless = headless
+        self.fire_map_shape = fire_map_shape  # <-- Add this line
+
 
         self._previous_position: Tuple[int,int] = None 
-        self.latest_movement: int = None
-        self.latest_interaction: int = None
+        self.latest_movement: str = "down"
+        self.latest_interaction: int = "fireline"
         self.mitigation_placed: bool = False
         self.moved_off_map: bool = False
 
@@ -495,22 +504,56 @@ class Agent(pygame.sprite.Sprite):
         self.latest_interaction = None
         self.mitigation_placed = False
         self.__init__()
-def Actions(self, action: str) -> None:
-    """
-    Store the action to be executed later during the simulation update.
 
-    Args:
-        action (str): One of 'up', 'down', 'left', 'right', 'fireline', 'wetline', or 'scratchline'.
-    """
-    valid_actions = {"up", "down", "left", "right", "fireline", "wetline", "scratchline"}
-    if action in valid_actions:
-        self.latest_interaction = action
-    else:
-        log.warning(f"Invalid action '{action}' for agent {self.agent_id}")
+    def actions(self, action: str, interaction: str) -> None:
+        """
+        Store the action to be executed later during the simulation update.
+
+        Args:
+            action (str): One of 'up', 'down', 'left', 'right', 'fireline', 'wetline', or 'scratchline'.
+        """
+        valid_actions = {"up", "down", "left", "right"}
+        valid_interactions = {"fireline", "wetline", "scratchline"}
+        if action in valid_actions:
+            self.latest_movement = action
+        elif action == None:
+            pass
+        else:
+            log.warning(f"Invalid action '{action}' for agent {self.agent_id}")
         
+        if interaction in valid_interactions:
+            self.latest_interaction = interaction
+        elif interaction == None:
+            pass
+        else:
+            log.warning(f"Invalid interaction '{interaction}' for agent {self.agent_id}")
+            
 
-    def update(self, *args, **kwargs) -> None:
+    def update(self, movement: str = None, interaction: str = None, *args, **kwargs) -> None:
         """
-        Currently unused.
+        Update the agent's state based on the action.
+        Valid actions include movement and mitigation placement.
         """
-        pass
+
+        self.actions(movement, interaction)
+        x, y = self.pos
+
+        if self.latest_movement == "up":
+            y = max(0, y - 1)
+        elif self.latest_movement == "down":
+            y = min(self.fire_map_shape[0] - 1, y + 1)
+        elif self.latest_movement == "left":
+            x = max(0, x - 1)
+        elif self.latest_movement == "right":
+            x = min(self.fire_map_shape[1] - 1, x + 1)
+
+        if self.latest_interaction == "fireline":
+            self.mitigation_placed = True
+        elif self.latest_interaction == "wetline":
+            self.mitigation_placed = True
+        elif self.latest_interaction == "scratchline":
+            self.mitigation_placed = True
+
+        # Update the agent's position
+        self.pos = (x, y)
+

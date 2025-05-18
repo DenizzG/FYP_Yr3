@@ -5,7 +5,7 @@ config = Config("configs/operational_config.yml")
 
 sim = FireSimulation(config)
 sim.rendering = True
-sim.run("100m")
+sim.run("24h")
 
 # Now save a GIF and fire spread graph from the last 2 hours of simulation
 sim.save_gif("gifs/simulation.gif")

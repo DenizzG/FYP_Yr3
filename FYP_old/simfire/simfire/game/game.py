@@ -371,6 +371,7 @@ class Game:
             *agent_sprites_group, *fire_sprites_group, terrain
         )
 
+        
         # Update and draw the sprites
         if not self.headless:
             if self.background is not None:
@@ -380,6 +381,7 @@ class Game:
 
                 fire_sprites_group.update()
                 agent_sprites_group.update()
+                
                 terrain.update(self.fire_map)
                 all_sprites.draw(self.screen)
 
@@ -407,5 +409,5 @@ class Game:
                     self.screen.blit(wind_dir_surf, (0, 0))
 
                 pygame.display.update()
-
+        
         return status

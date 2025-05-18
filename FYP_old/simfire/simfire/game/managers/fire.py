@@ -14,6 +14,8 @@ from typing import Any, List, Optional, Sequence, Tuple, Union, Dict
 import matplotlib.pyplot as plt
 import numpy as np
 import pygame
+import os
+import pandas as pd
 
 from ...enums import BurnStatus, GameStatus, RoSAttenuation
 from ...utils.graph import FireSpreadGraph
@@ -272,19 +274,19 @@ class FireManager:
         #  More Info: https://bandit.readthedocs.io/en/1.7.4/plugins/b101_assert_used.html
         if fire_map.shape != rate_of_spread.shape:
             log.error(
-                "The fire map does not match the shape of the rate of spread in "
-                "FireManager._update_rate_of_spread"
+            "The fire map does not match the shape of the rate of spread in "
+            "FireManager._update_rate_of_spread"
             )
             raise AssertionError
 
         factor = np.zeros_like(rate_of_spread) #creates array filled w 0's, same dim's as rate_of_spread
-        #attenuate_line_ros = True
         if self.attenuate_line_ros:
             factor[np.where(fire_map == BurnStatus.FIRELINE)] = RoSAttenuation.FIRELINE
             factor[np.where(fire_map == BurnStatus.SCRATCHLINE)] = (
-                RoSAttenuation.SCRATCHLINE
+            RoSAttenuation.SCRATCHLINE
             )
             factor[np.where(fire_map == BurnStatus.WETLINE)] = RoSAttenuation.WETLINE
+
             rate_of_spread = rate_of_spread - factor
         else:
             rate_of_spread[np.where(fire_map == BurnStatus.FIRELINE)] = 0
@@ -553,15 +555,16 @@ class RothermelFireManager(FireManager):
         # Set the Environment parameters into arrays
         #M_f initialized in YAML
         M_f = [self.environment.M_f] * num_locs
-        if self.agents_enable == True:
+
+        """ if self.agents_enable == True:
             for agent_id, agent in agents.items(): #.items?
                 #agent_id starts at 1
                 for new_location, (nx, ny) in enumerate(new_locs): #enumerate lets you loop through list and go to next item   
                     #90 meters - around how far firefighters shoot water
                     if (abs(agent.pos[0] - nx) + (abs(agent.pos[1] - ny)) < 5):
                         M_f[new_location] = 0.3
-                        #break #no need to check other agents if one is already close
-
+                        #brea vk #no need to check other agents if one is already close
+        """
         U = []        
         U.extend(list(self.U[new_locs_uzip[::-1]]))
         folder_path = Path("/home/denizzg/FYP_Yr3/FYP_old/simfire/processing_data/wind")
@@ -796,6 +799,14 @@ class RothermelFireManager(FireManager):
 
         # Update the fire_map with new burning locations and update self.sprites and
         # self.durations
+        # Save rate_of_spread before attenuation
+        
+        runtime_dir = "/home/denizzg/FYP_Yr3/FYP_old/simfire/processing_data/runtime_params"
+        os.makedirs(runtime_dir, exist_ok=True)
+        pd.DataFrame(fire_map).to_csv(os.path.join(runtime_dir, "fire_map.csv"), index=False)
+        
+        #update with new locs has the locations of all new fire sprites, and through the ROS calculates
+        #whether or not the fire will be spread to these locations.
         fire_map = self._update_with_new_locs(y_coords, x_coords, fire_map)
 
         # Save the new elapsed_time value
