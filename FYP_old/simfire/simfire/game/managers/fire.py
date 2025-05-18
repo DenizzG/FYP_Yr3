@@ -372,6 +372,7 @@ class RothermelFireManager(FireManager):
         self.terrain = terrain
         self.environment = environment
         self.agents_enable = True
+        self.avg_new_fire_position: Optional[Tuple[int, int]] = [0,0]
 
         # Convert potential constant or nested sequence wind magnitude
         # and directions to numpy arrays with values at each game/terrain
@@ -786,6 +787,8 @@ class RothermelFireManager(FireManager):
         # Create integer y_coords and x_coords
         y_coords = new_loc_y.astype(int)
         x_coords = new_loc_x.astype(int)
+
+        self.avg_new_fire_position = [(np.mean(x_coords)+20), np.mean(y_coords)]
 
         # Create a rate_of_spread variable that takes the same shape as self.burn_amounts
         # and fire_map

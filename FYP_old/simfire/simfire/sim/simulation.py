@@ -501,8 +501,7 @@ class FireSimulation(Simulation):
 
     def update_agent_positions(self) -> None:
         for agent_id, agent in self.agents.items():
-            if agent.latest_movement in {"up", "down", "left", "right"}:
-                agent.update()
+            agent.next_movement(self.fire_manager.avg_new_fire_position)
 
 
     def run(self, time: Union[str, int]) -> Tuple[np.ndarray, bool]:
@@ -543,7 +542,7 @@ class FireSimulation(Simulation):
 
             #Normally self.fire_manager
 
-            #self.update_agent_positions()
+            self.update_agent_positions()
             self.update_mitigation()
             self.fire_sprites = self.fire_manager.sprites
             self.fire_map, self.fire_status = self.fire_manager.update(self.fire_map, self.agents, self.agent_positions)

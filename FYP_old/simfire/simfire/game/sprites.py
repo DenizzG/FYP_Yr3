@@ -528,14 +528,35 @@ class Agent(pygame.sprite.Sprite):
         else:
             log.warning(f"Invalid interaction '{interaction}' for agent {self.agent_id}")
             
+    def next_movement(self, avg_fire_position) -> None:
+        # Determine direction to move towards avg_fire_position using sohcahtoa
+        agent_x, agent_y = self.pos
+        fire_x, fire_y = avg_fire_position
 
-    def update(self, movement: str = None, interaction: str = None, *args, **kwargs) -> None:
+        dx = fire_x - agent_x
+        dy = fire_y - agent_y
+
+        # Calculate angle in degrees (0 = up, 90 = right, 180 = down, 270 = left)
+        angle = np.degrees(np.arctan2(dx, -dy)) % 360
+
+        # Find the closest cardinal direction
+        directions = {
+            0: "up",
+            90: "right",
+            180: "down",
+            270: "left"
+        }
+        # snap angle difference to a cardinal direction, handling wrap around
+        closest_dir = min(directions.keys(), key=lambda d: abs((angle - d + 180) % 360 - 180))
+        self.latest_movement = directions[closest_dir]
+        pass
+
+    def update(self, *args, **kwargs) -> None:
         """
         Update the agent's state based on the action.
         Valid actions include movement and mitigation placement.
         """
 
-        self.actions(movement, interaction)
         x, y = self.pos
 
         if self.latest_movement == "up":
