@@ -12,6 +12,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 import h5py
 import jsonlines
 import numpy as np
+import optuna
 
 from ..enums import (
     BurnStatus,
@@ -241,6 +242,7 @@ class FireSimulation(Simulation):
             )
             #array of all agent positions
             self.agent_positions[y][x] = agent_id
+            self.agents[agent_id].action_space = ["up", "down", "left", "right"]
 
     def _create_terrain(self) -> None:
         """ 
@@ -501,10 +503,37 @@ class FireSimulation(Simulation):
 
     def update_agent_positions(self) -> None:
         for agent_id, agent in self.agents.items():
-            agent.next_movement(self.fire_manager.avg_new_fire_position)
+            agent.next_movement()
+
+    def trial_agents_plan(self, tick: int, trial) -> None:
+        plan_flat = []
+        for agent_id, agent in self.agents.items():
+            for i in range(tick):
+                action = trial.suggest_categorical( f"agent_{agent_id}_action_{i}", agent.action_space)
+                plan_flat.append(action)
+
+        agent_plan: Dict[int, List[str]] = {
+            agent_id: plan_flat[agent_id * tick : (agent_id + 1) * tick]
+            for agent_id in self.agents
+        }
+
+        for agent_id, agent in self.agents.items():
+            if agent_id in agent_plan:
+                agent.actions =  agent_plan[agent_id][:tick]
+            else:
+                raise ValueError(f"No action plan found for agent {agent_id}")
+
+        pass
+
+    def objective_function(self) -> float:
+        #determine total area burned
+        fire_map_copy = self.fire_map.copy()
+        mask = (fire_map_copy == 1) | (fire_map_copy == 2)
+        total = np.sum(fire_map_copy[mask]) #sums up all pixels with values 1 or 2  (BURNING OR BURNED)
+        return total
 
 
-    def run(self, time: Union[str, int]) -> Tuple[np.ndarray, bool]:
+    def run(self, trial) -> Tuple[np.ndarray, bool]:
         print("Printing: Method - Run, Class FireSimulation, simulation.py", flush=True)
 
         """
@@ -527,16 +556,20 @@ class FireSimulation(Simulation):
                   range from [0, 6] (see simfire/enums.py:BurnStatus).
                 - A boolean indicating whether the simulation has reached the end.
         """
-        if isinstance(time, str):
+        """if isinstance(time, str):
             # Convert the string to a number of minutes
             time = str_to_minutes(time)
             # Then determine how many times to step through the loop
             total_updates = round(time / self.config.simulation.update_rate)
-        elif isinstance(time, int):
-            total_updates = time
+        elif isinstance(time, int):"""
 
+        total_updates = round(self.config.simulation.run_time / self.config.simulation.update_rate)
         num_updates = 0
         self.elapsed_time = self.fire_manager.elapsed_time
+
+        print("tick:", total_updates)
+        print("num_agents:", len(self.agents))
+        self.trial_agents_plan(total_updates, trial)
 
         while self.fire_status == GameStatus.RUNNING and num_updates < total_updates:
 
@@ -565,10 +598,11 @@ class FireSimulation(Simulation):
 
             
 
-
+        area_burnt = self.objective_function()
         self.active = True if self.fire_status == GameStatus.RUNNING else False
 
-        return self.fire_map, self.active
+        #return self.fire_map, self.active
+        return area_burnt
 
     #Resets fire_map to UNBURNED excpect for fire's starting position, which is BURNING
     def _create_fire_map(self) -> None:
@@ -1003,7 +1037,8 @@ class FireSimulation(Simulation):
             # currently rendering
             self._game = Game(
                 self.config.area.screen_size,
-                record=True,
+                headless = self.config.simulation.headless,
+                record=False,
             )
         else:
             self._game.quit()
@@ -1028,7 +1063,9 @@ class FireSimulation(Simulation):
         )
 
         self._game.fire_map = self.fire_map
-        self._last_screen = self._game.screen
+        
+        if not self.config.simulation.headless:
+            self._last_screen = self._game.screen
 
     def _create_out_path(self) -> None:
         """

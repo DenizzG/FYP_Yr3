@@ -9,10 +9,14 @@ import pygame
 from reportlab.graphics import renderPM
 from svglib.svglib import svg2rlg
 from wurlitzer import pipes
+import matplotlib.pyplot as plt
+from skopt import gp_minimize
+
 
 from ..enums import BURNED_RGB_COLOR, BurnStatus, SpriteLayer
 from ..utils.layers import FuelLayer, HistoricalLayer, TopographyLayer
 from ..utils.log import create_logger
+
 
 log = create_logger(__name__)
 
@@ -447,6 +451,9 @@ class Agent(pygame.sprite.Sprite):
         self.latest_interaction: int = "fireline"
         self.mitigation_placed: bool = False
         self.moved_off_map: bool = False
+        self.action_space = []
+        self.actions = []
+        self.current_action = 0
 
         #rect.x, rect.y         # Position (top-left corner)
         #rect.width, rect.height  # Size
@@ -528,8 +535,12 @@ class Agent(pygame.sprite.Sprite):
         else:
             log.warning(f"Invalid interaction '{interaction}' for agent {self.agent_id}")
             
-    def next_movement(self, avg_fire_position) -> None:
-        # Determine direction to move towards avg_fire_position using sohcahtoa
+    def next_movement(self) -> None:
+        self.latest_movement = self.actions[self.current_action]
+        self.current_action += 1
+        pass
+
+        """# Determine direction to move towards avg_fire_position using sohcahtoa
         agent_x, agent_y = self.pos
         fire_x, fire_y = avg_fire_position
 
@@ -547,9 +558,11 @@ class Agent(pygame.sprite.Sprite):
             270: "left"
         }
         # snap angle difference to a cardinal direction, handling wrap around
+        #lambda is a quick way to define a function in place, so saing for for each item d, compute
+        #somehthing (d) and use that value to compare
         closest_dir = min(directions.keys(), key=lambda d: abs((angle - d + 180) % 360 - 180))
         self.latest_movement = directions[closest_dir]
-        pass
+        pass"""
 
     def update(self, *args, **kwargs) -> None:
         """

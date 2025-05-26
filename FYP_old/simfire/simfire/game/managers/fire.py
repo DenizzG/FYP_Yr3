@@ -373,6 +373,7 @@ class RothermelFireManager(FireManager):
         self.environment = environment
         self.agents_enable = True
         self.avg_new_fire_position: Optional[Tuple[int, int]] = [0,0]
+        self.tick_counter = 0
 
         # Convert potential constant or nested sequence wind magnitude
         # and directions to numpy arrays with values at each game/terrain
@@ -714,108 +715,113 @@ class RothermelFireManager(FireManager):
             A NumPy array of the updated `fire_map` and the current `GameStatus`
         """
         # Remove all fires that are past the max duration
-        
-        
-        self._prune_sprites(fire_map)
-        # Increment the durations
-        self.durations = list(map(lambda x: x + 1, self.durations))
-        num_sprites = len(self.sprites)
+        self.tick_counter += 1
+        if self.tick_counter % 2 != 0:
 
-        # If the number of sprites is 0, quit the sim
-        if num_sprites == 0:
-            return fire_map, GameStatus.QUIT
+            return fire_map, GameStatus.RUNNING
+        
+        else: 
+                
+            self._prune_sprites(fire_map)
+            # Increment the durations
+            self.durations = list(map(lambda x: x + 1, self.durations))
+            num_sprites = len(self.sprites)
 
-        # If we've reached the end time, quit the sim
-        if self.max_time is not None:
-            if self.update_rate > self.max_time or self.elapsed_time > self.max_time:
+            # If the number of sprites is 0, quit the sim
+            if num_sprites == 0:
                 return fire_map, GameStatus.QUIT
 
-        sprite_idxs = list(range(num_sprites))
+            # If we've reached the end time, quit the sim
+            if self.max_time is not None:
+                if self.update_rate > self.max_time or self.elapsed_time > self.max_time:
+                    return fire_map, GameStatus.QUIT
+
+            sprite_idxs = list(range(num_sprites))
 
 
-        all_params = [self._accrue_sprites(idx, fire_map, agents, agent_positions) for idx in sprite_idxs]
-        all_params = list(filter(None, all_params))
+            all_params = [self._accrue_sprites(idx, fire_map, agents, agent_positions) for idx in sprite_idxs]
+            all_params = list(filter(None, all_params))
 
-        # Sprites exist, but there are no new locations to spread to
-        if len(all_params) == 0:
+            # Sprites exist, but there are no new locations to spread to
+            if len(all_params) == 0:
+                return fire_map, GameStatus.RUNNING
+
+            [
+                loc_x,
+                loc_y,
+                new_loc_x,
+                new_loc_y,
+                w_0,
+                delta,
+                M_x,
+                sigma,
+                h,
+                S_T,
+                S_e,
+                p_p,
+                M_f,
+                U,
+                U_dir,
+                slope_mag,
+                slope_dir,
+            ] = self._flatten_params(all_params)
+
+            # Compute the rate of spread with vectorized function
+            R = compute_rate_of_spread(
+                loc_x,
+                loc_y,
+                new_loc_x,
+                new_loc_y,
+                w_0,
+                delta,
+                M_x,
+                sigma,
+                h,
+                S_T,
+                S_e,
+                p_p,
+                M_f,
+                U,
+                U_dir,
+                slope_mag,
+                slope_dir,
+            )
+
+            # Scale the rate of spread by the update rate
+            R *= self.update_rate
+
+            # Create integer y_coords and x_coords
+            y_coords = new_loc_y.astype(int)
+            x_coords = new_loc_x.astype(int)
+
+            self.avg_new_fire_position = [(np.mean(x_coords)+20), np.mean(y_coords)]
+
+            # Create a rate_of_spread variable that takes the same shape as self.burn_amounts
+            # and fire_map
+            rate_of_spread = np.zeros_like(self.burn_amounts)
+            rate_of_spread[y_coords, x_coords] = R
+
+            # Update the burn_amounts dependent on if there are control lines there
+            # And only update if specified in the class
+            self.rate_of_spread = self._update_rate_of_spread(rate_of_spread, fire_map)
+            self.burn_amounts += self.rate_of_spread
+
+            # Update the fire_map with new burning locations and update self.sprites and
+            # self.durations
+            # Save rate_of_spread before attenuation
+            
+            runtime_dir = "/home/denizzg/FYP_Yr3/FYP_old/simfire/processing_data/runtime_params"
+            os.makedirs(runtime_dir, exist_ok=True)
+            pd.DataFrame(fire_map).to_csv(os.path.join(runtime_dir, "fire_map.csv"), index=False)
+            
+            #update with new locs has the locations of all new fire sprites, and through the ROS calculates
+            #whether or not the fire will be spread to these locations.
+            fire_map = self._update_with_new_locs(y_coords, x_coords, fire_map)
+
+            # Save the new elapsed_time value
+            self.elapsed_time += self.update_rate
+
             return fire_map, GameStatus.RUNNING
-
-        [
-            loc_x,
-            loc_y,
-            new_loc_x,
-            new_loc_y,
-            w_0,
-            delta,
-            M_x,
-            sigma,
-            h,
-            S_T,
-            S_e,
-            p_p,
-            M_f,
-            U,
-            U_dir,
-            slope_mag,
-            slope_dir,
-        ] = self._flatten_params(all_params)
-
-        # Compute the rate of spread with vectorized function
-        R = compute_rate_of_spread(
-            loc_x,
-            loc_y,
-            new_loc_x,
-            new_loc_y,
-            w_0,
-            delta,
-            M_x,
-            sigma,
-            h,
-            S_T,
-            S_e,
-            p_p,
-            M_f,
-            U,
-            U_dir,
-            slope_mag,
-            slope_dir,
-        )
-
-        # Scale the rate of spread by the update rate
-        R *= self.update_rate
-
-        # Create integer y_coords and x_coords
-        y_coords = new_loc_y.astype(int)
-        x_coords = new_loc_x.astype(int)
-
-        self.avg_new_fire_position = [(np.mean(x_coords)+20), np.mean(y_coords)]
-
-        # Create a rate_of_spread variable that takes the same shape as self.burn_amounts
-        # and fire_map
-        rate_of_spread = np.zeros_like(self.burn_amounts)
-        rate_of_spread[y_coords, x_coords] = R
-
-        # Update the burn_amounts dependent on if there are control lines there
-        # And only update if specified in the class
-        self.rate_of_spread = self._update_rate_of_spread(rate_of_spread, fire_map)
-        self.burn_amounts += self.rate_of_spread
-
-        # Update the fire_map with new burning locations and update self.sprites and
-        # self.durations
-        # Save rate_of_spread before attenuation
-        
-        runtime_dir = "/home/denizzg/FYP_Yr3/FYP_old/simfire/processing_data/runtime_params"
-        os.makedirs(runtime_dir, exist_ok=True)
-        pd.DataFrame(fire_map).to_csv(os.path.join(runtime_dir, "fire_map.csv"), index=False)
-        
-        #update with new locs has the locations of all new fire sprites, and through the ROS calculates
-        #whether or not the fire will be spread to these locations.
-        fire_map = self._update_with_new_locs(y_coords, x_coords, fire_map)
-
-        # Save the new elapsed_time value
-        self.elapsed_time += self.update_rate
-
-        return fire_map, GameStatus.RUNNING
 
 
 class ConstantSpreadFireManager(FireManager):

@@ -338,7 +338,6 @@ class Game:
                                 location
         """
         status = GameStatus.RUNNING
-
         # Convert the sequences to list for list addition later
         if not isinstance(fire_sprites, list):
             fire_sprites = list(fire_sprites)
@@ -409,5 +408,11 @@ class Game:
                     self.screen.blit(wind_dir_surf, (0, 0))
 
                 pygame.display.update()
-        
+
+
+        if self.headless:
+            if self.background is not None:
+                fire_sprites_group.update()
+                agent_sprites_group.update()          
+                terrain.update(self.fire_map)
         return status

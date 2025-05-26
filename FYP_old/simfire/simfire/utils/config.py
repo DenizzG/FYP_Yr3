@@ -98,6 +98,7 @@ class SimulationConfig:
         save_data: bool,
         data_type: str,
         sf_home: str,
+        run_time: int = None,
     ) -> None:
         self.update_rate = float(update_rate)
         self.runtime = str_to_minutes(runtime)
@@ -113,6 +114,7 @@ class SimulationConfig:
             )
         self.data_type = data_type
         self.sf_home = Path(sf_home)
+        self.run_time = run_time
 
 
 @dataclasses.dataclass

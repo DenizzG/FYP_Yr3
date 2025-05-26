@@ -12,12 +12,13 @@ display:
 simulation:
   update_rate: 1
   runtime: 15h
-  headless: false
+  headless: False
   draw_spread_graph: false
   record: true
   save_data: true
   data_type: "npy"
   sf_home: "~/.simfire"
+  run_time: 60 #in minutes
 
 mitigation:
   ros_attenuation: true
@@ -26,8 +27,8 @@ agents:
   firefighter:
     agent_size: 1
     spawn_points:
-        [[50, 0],
-         [100, 50]]
+        [[40, 10],
+         [30, 55]]
   dozer:
     agent_size: 6
     spawn_points: []
@@ -37,8 +38,8 @@ operational:
   seed:
   latitude: 38.422 # top left corner
   longitude: -118.266 # top left corner
-  height: 10000 # in meters
-  width: 10000 # in meters
+  height: 2000 # in meters
+  width: 2000 # in meters
   resolution: 30 # in meters
   year: 2020
 
@@ -123,7 +124,7 @@ wind:
       range_min: 7
       range_max: 47
     direction:
-      seed: 650
+      seed: 640
       scale: 1500
       octaves: 2
       persistence: 0.9
