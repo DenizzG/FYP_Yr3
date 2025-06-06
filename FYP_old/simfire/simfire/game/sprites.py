@@ -452,7 +452,7 @@ class Agent(pygame.sprite.Sprite):
         self.mitigation_placed: bool = False
         self.moved_off_map: bool = False
         self.action_space = []
-        self.actions = []
+        #self.actions = []
         self.current_action = 0
 
         #rect.x, rect.y         # Position (top-left corner)
@@ -540,29 +540,7 @@ class Agent(pygame.sprite.Sprite):
         self.current_action += 1
         pass
 
-        """# Determine direction to move towards avg_fire_position using sohcahtoa
-        agent_x, agent_y = self.pos
-        fire_x, fire_y = avg_fire_position
-
-        dx = fire_x - agent_x
-        dy = fire_y - agent_y
-
-        # Calculate angle in degrees (0 = up, 90 = right, 180 = down, 270 = left)
-        angle = np.degrees(np.arctan2(dx, -dy)) % 360
-
-        # Find the closest cardinal direction
-        directions = {
-            0: "up",
-            90: "right",
-            180: "down",
-            270: "left"
-        }
-        # snap angle difference to a cardinal direction, handling wrap around
-        #lambda is a quick way to define a function in place, so saing for for each item d, compute
-        #somehthing (d) and use that value to compare
-        closest_dir = min(directions.keys(), key=lambda d: abs((angle - d + 180) % 360 - 180))
-        self.latest_movement = directions[closest_dir]
-        pass"""
+        
 
     def update(self, *args, **kwargs) -> None:
         """
