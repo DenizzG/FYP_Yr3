@@ -454,6 +454,7 @@ class Agent(pygame.sprite.Sprite):
         self.action_space = []
         #self.actions = []
         self.current_action = 0
+        self.waypoints: Optional[list[Tuple[int, int]]] = None
 
         #rect.x, rect.y         # Position (top-left corner)
         #rect.width, rect.height  # Size
@@ -536,9 +537,38 @@ class Agent(pygame.sprite.Sprite):
             log.warning(f"Invalid interaction '{interaction}' for agent {self.agent_id}")
             
     def next_movement(self) -> None:
-        self.latest_movement = self.actions[self.current_action]
-        self.current_action += 1
-        pass
+        """
+        Move the agent towards the current waypoint in self.waypoints.
+        The agent moves in cardinal directions, prioritizing diagonal movement
+        (i.e., alternating between x and y if both are needed).
+        When a waypoint is reached, move to the next one.
+        This version is iterative, not recursive.
+        """
+        while hasattr(self, "waypoints") and self.waypoints:
+            target = self.waypoints[0]
+            x, y = self.pos
+            tx, ty = target
+
+            dx = tx - x
+            dy = ty - y
+
+            if dx != 0 and dy != 0:
+                if abs(dx) >= abs(dy):
+                    self.latest_movement = "right" if dx > 0 else "left"
+                else:
+                    self.latest_movement = "down" if dy > 0 else "up"
+                break
+            elif dx != 0:
+                self.latest_movement = "right" if dx > 0 else "left"
+                break
+            elif dy != 0:
+                self.latest_movement = "down" if dy > 0 else "up"
+                break
+            else:
+                # Waypoint reached, pop and check next
+                self.waypoints.pop(0)
+        else:
+            self.latest_movement = None
 
         
 

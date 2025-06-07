@@ -13,6 +13,7 @@ import h5py
 import jsonlines
 import numpy as np
 import optuna
+from optuna.samplers import RandomSampler
 
 from ..enums import (
     BurnStatus,
@@ -61,7 +62,7 @@ class Simulation(ABC):
 
     @abstractmethod
     def run(self, time: Union[str, int]) -> Tuple[np.ndarray, bool]:
-        print("Printing: Method - Run, Class FireSimulation, simulation.py", flush=True)
+        #print("Printing: Method - Run, Class FireSimulation, simulation.py", flush=True) #uncomment
 
         """
         Runs the simulation.
@@ -506,24 +507,61 @@ class FireSimulation(Simulation):
             agent.next_movement()
 
     def trial_agents_plan(self, tick: int, trial) -> None:
-        plan_flat = []
+        """
+        For each agent, generate a list of waypoints (positions) that the agent should reach
+        by the end of the simulation. The number of waypoints is determined by
+        self.config.simulation.n_waypoints. The distance between waypoints is approximately
+        run_time / n_waypoints steps, and any extra steps are distributed one by one to the
+        first waypoints.
+
+        Each waypoint is chosen by Optuna from the valid map area, within a radius
+        of (steps_per_waypoint) from the previous waypoint (not always the original starting position),
+        in any direction. Agents are only allowed to move in cardinal directions (up, down, left, right).
+        """
+        n_waypoints = self.config.simulation.n_waypoints
+        run_time = self.config.simulation.run_time
+        steps_per_waypoint = run_time // n_waypoints
+        extra_steps = run_time % n_waypoints
+
+        map_height, map_width = self.config.area.screen_size
+
         for agent_id, agent in self.agents.items():
-            for i in range(tick):
-                action = trial.suggest_categorical( f"agent_{agent_id}_action_{i}", agent.action_space)
-                plan_flat.append(action)
+            waypoints = []
+            # Start from the agent's initial position
+            x, y = agent.pos
+            for i in range(n_waypoints):
+                # Distribute extra steps among the first 'extra_steps' waypoints
+                step = steps_per_waypoint + (1 if i < extra_steps else 0)
+                radius = step
 
-        agent_plan: Dict[int, List[str]] = {
-            agent_id: plan_flat[agent_id * tick : (agent_id + 1) * tick]
-            for agent_id in self.agents
-        }
+                # Sample a point within a square of side 2*radius+1 centered at current (x, y)
+                min_x = max(0, x - radius)
+                max_x = min(map_width - 1, x + radius)
+                min_y = max(0, y - radius)
+                max_y = min(map_height - 1, y + radius)
 
-        for agent_id, agent in self.agents.items():
-            if agent_id in agent_plan:
-                agent.actions =  agent_plan[agent_id][:tick]
-            else:
-                raise ValueError(f"No action plan found for agent {agent_id}")
+                # Only allow points within manhattan distance == radius from current (x, y)
+                valid_points = [
+                    (px, py)
+                    for px in range(min_x, max_x + 1)
+                    for py in range(min_y, max_y + 1)
+                    if abs(px - x) + abs(py - y) == radius
+                ]
+                # If there are no valid points (e.g., radius=0), stay in place
+                if not valid_points:
+                    valid_points = [(x, y)]
 
-        pass
+                idx = trial.suggest_int(
+                    f"agent_{trial.number}_agent_{agent_id}_waypoint_{i}_idx", 0, len(valid_points) - 1
+                )
+                new_x, new_y = valid_points[idx]
+
+                waypoints.append((new_x, new_y))
+                x, y = new_x, new_y
+
+            agent.waypoints = waypoints
+
+            #print(f"Agent {agent_id} waypoints (iteration {trial.number}): {waypoints}") #uncomment
 
     def objective_function(self) -> float:
         #determine total area burned
@@ -534,7 +572,7 @@ class FireSimulation(Simulation):
 
 
     def run(self, trial) -> Tuple[np.ndarray, bool]:
-        print("Printing: Method - Run, Class FireSimulation, simulation.py", flush=True)
+        #print("Printing: Method - Run, Class FireSimulation, simulation.py", flush=True) #uncomment
 
         """
         Runs the simulation with or without mitigation lines.
@@ -567,8 +605,8 @@ class FireSimulation(Simulation):
         num_updates = 0
         self.elapsed_time = self.fire_manager.elapsed_time
 
-        print("tick:", total_updates)
-        print("num_agents:", len(self.agents))
+        #print("tick:", total_updates) #uncomment
+        #print("num_agents:", len(self.agents)) #uncomment
         self.trial_agents_plan(total_updates, trial)
 
         while self.fire_status == GameStatus.RUNNING and num_updates < total_updates:
@@ -1153,7 +1191,7 @@ class FireSimulation(Simulation):
         for key, loc in data_locs.items():
             path = datapath / loc
             if not path.is_file():
-                log.info(f"Creating static data file '{path}'")
+                #log.info(f"Creating static data file '{path}'") #uncomment
                 if self.config.simulation.data_type == "npy":
                     np.save(path, data[key])
                 elif self.config.simulation.data_type == "h5":
