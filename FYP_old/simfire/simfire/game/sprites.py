@@ -455,6 +455,7 @@ class Agent(pygame.sprite.Sprite):
         #self.actions = []
         self.current_action = 0
         self.waypoints: Optional[list[Tuple[int, int]]] = None
+        self.touched_fire: int = 0
 
         #rect.x, rect.y         # Position (top-left corner)
         #rect.width, rect.height  # Size

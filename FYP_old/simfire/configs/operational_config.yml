@@ -18,7 +18,7 @@ simulation:
   save_data: true
   data_type: "npy"
   sf_home: "~/.simfire"
-  run_time: 40 #in minutes
+  run_time: 160 #in minutes
   n_waypoints: 3
 
 mitigation:

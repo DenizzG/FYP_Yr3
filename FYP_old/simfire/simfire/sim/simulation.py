@@ -505,6 +505,11 @@ class FireSimulation(Simulation):
     def update_agent_positions(self) -> None:
         for agent_id, agent in self.agents.items():
             agent.next_movement()
+            x, y = agent.pos
+            # Bounds checking
+            if 0 <= y < self.fire_map.shape[0] and 0 <= x < self.fire_map.shape[1]:
+                if self.fire_map[y, x] == 1:
+                    agent.touched_fire += 1
 
     def trial_agents_plan(self, tick: int, trial) -> None:
         """
@@ -555,7 +560,7 @@ class FireSimulation(Simulation):
                     f"agent_{trial.number}_agent_{agent_id}_waypoint_{i}_idx", 0, len(valid_points) - 1
                 )
                 new_x, new_y = valid_points[idx]
-
+    
                 waypoints.append((new_x, new_y))
                 x, y = new_x, new_y
 
@@ -564,11 +569,17 @@ class FireSimulation(Simulation):
             #print(f"Agent {agent_id} waypoints (iteration {trial.number}): {waypoints}") #uncomment
 
     def objective_function(self) -> float:
-        #determine total area burned
+        # Determine total area burned
         fire_map_copy = self.fire_map.copy()
         mask = (fire_map_copy == 1) | (fire_map_copy == 2)
-        total = np.sum(fire_map_copy[mask]) #sums up all pixels with values 1 or 2  (BURNING OR BURNED)
-        return total
+        total_burned = np.sum(fire_map_copy[mask])  # sums up all pixels with values 1 or 2 (BURNING OR BURNED)
+
+        # Penalize for each time any agent touched the fire
+        penalty = 0
+        for agent in self.agents.values():
+            penalty += agent.touched_fire * 300
+
+        return total_burned + penalty
 
 
     def run(self, trial) -> Tuple[np.ndarray, bool]:
