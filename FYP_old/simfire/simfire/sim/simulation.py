@@ -13,7 +13,7 @@ import h5py
 import jsonlines
 import numpy as np
 import optuna
-from optuna.samplers import RandomSampler
+from optuna.samplers import RandomSampler, QMCSampler
 
 from ..enums import (
     BurnStatus,
@@ -501,6 +501,51 @@ class FireSimulation(Simulation):
         self.fire_map = self.scratchline_manager.update(self.fire_map, scratchlines)
         self.fire_map = self.wetline_manager.update(self.fire_map, wetlines)
 
+    def valid_points(self) -> dict:
+        """
+        Computes all valid points for each agent at the current simulation tick.
+        For each agent, valid points are those at a Manhattan distance equal to the
+        number of remaining simulation ticks from the agent's current position.
+
+        Arguments:
+            current_tick: The current simulation tick (step).
+
+        Returns:
+            A dictionary mapping agent_id to an array of valid (x, y) points.
+        """
+        valid_points_dict = {}
+        map_height, map_width = self.config.area.screen_size
+        total_ticks = self.config.simulation.run_time
+        #try self.(elapsed_time, elapsed_steps or current_ticks).
+        #We have to say current_tick = 0 because we are starting a new simulation at every tick, so that SMCSampler can do it
+        current_tick = 0  
+        remaining_ticks = total_ticks - current_tick
+        if remaining_ticks < 0:
+            remaining_ticks = 0
+
+        for agent_id, agent in self.agents.items():
+            x, y = agent.pos
+            radius = int(remaining_ticks)
+
+            min_x = int(max(0, x - radius))
+            max_x = int(min(map_width - 1, x + radius))
+            min_y = int(max(0, y - radius))
+            max_y = int(min(map_height - 1, y + radius))
+
+            valid_points = [
+                (px, py)
+                for px in range(min_x, max_x + 1)
+                for py in range(min_y, max_y + 1)
+                if abs(px - x) + abs(py - y) == radius
+            ]
+
+            if not valid_points:
+                valid_points = [(x, y)]
+
+            valid_points_dict[agent_id] = valid_points
+
+        return valid_points_dict
+
 
     def update_agent_positions(self) -> None:
         for agent_id, agent in self.agents.items():
@@ -511,62 +556,33 @@ class FireSimulation(Simulation):
                 if self.fire_map[y, x] == 1:
                     agent.touched_fire += 1
 
-    def trial_agents_plan(self, tick: int, trial) -> None:
-        """
-        For each agent, generate a list of waypoints (positions) that the agent should reach
-        by the end of the simulation. The number of waypoints is determined by
-        self.config.simulation.n_waypoints. The distance between waypoints is approximately
-        run_time / n_waypoints steps, and any extra steps are distributed one by one to the
-        first waypoints.
+    def assign_valid_points(self):
+        valid_points_dict = self.valid_points()
+        for agent_id, agent in self.agents.items():
+            # Assign the valid points to the agent
+            agent.valid_points = valid_points_dict[agent_id]
+            # If the agent has no valid points, reset to its current position
+            if not agent.valid_points:
+                agent.valid_points = [agent.pos]
 
-        Each waypoint is chosen by Optuna from the valid map area, within a radius
-        of (steps_per_waypoint) from the previous waypoint (not always the original starting position),
-        in any direction. Agents are only allowed to move in cardinal directions (up, down, left, right).
-        """
+    def trial_agents_plan(self, trial) -> None:
         n_waypoints = self.config.simulation.n_waypoints
-        run_time = self.config.simulation.run_time
-        steps_per_waypoint = run_time // n_waypoints
-        extra_steps = run_time % n_waypoints
-
-        map_height, map_width = self.config.area.screen_size
-
         for agent_id, agent in self.agents.items():
             waypoints = []
-            # Start from the agent's initial position
-            x, y = agent.pos
+            x, y = agent.pos 
             for i in range(n_waypoints):
-                # Distribute extra steps among the first 'extra_steps' waypoints
-                step = steps_per_waypoint + (1 if i < extra_steps else 0)
-                radius = step
-
-                # Sample a point within a square of side 2*radius+1 centered at current (x, y)
-                min_x = max(0, x - radius)
-                max_x = min(map_width - 1, x + radius)
-                min_y = max(0, y - radius)
-                max_y = min(map_height - 1, y + radius)
-
-                # Only allow points within manhattan distance == radius from current (x, y)
-                valid_points = [
-                    (px, py)
-                    for px in range(min_x, max_x + 1)
-                    for py in range(min_y, max_y + 1)
-                    if abs(px - x) + abs(py - y) == radius
-                ]
-                # If there are no valid points (e.g., radius=0), stay in place
-                if not valid_points:
-                    valid_points = [(x, y)]
-
+                valid_points = agent.valid_points
                 idx = trial.suggest_int(
-                    f"agent_{trial.number}_agent_{agent_id}_waypoint_{i}_idx", 0, len(valid_points) - 1
+                    f"agent_{agent_id}_waypoint_{i}_idx",
+                    0,
+                    len(valid_points) - 1
                 )
                 new_x, new_y = valid_points[idx]
-    
                 waypoints.append((new_x, new_y))
                 x, y = new_x, new_y
 
             agent.waypoints = waypoints
 
-            #print(f"Agent {agent_id} waypoints (iteration {trial.number}): {waypoints}") #uncomment
 
     def objective_function(self) -> float:
         # Determine total area burned
@@ -618,7 +634,7 @@ class FireSimulation(Simulation):
 
         #print("tick:", total_updates) #uncomment
         #print("num_agents:", len(self.agents)) #uncomment
-        self.trial_agents_plan(total_updates, trial)
+        self.trial_agents_plan(trial)
 
         while self.fire_status == GameStatus.RUNNING and num_updates < total_updates:
 

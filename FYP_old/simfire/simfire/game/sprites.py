@@ -16,6 +16,7 @@ from skopt import gp_minimize
 from ..enums import BURNED_RGB_COLOR, BurnStatus, SpriteLayer
 from ..utils.layers import FuelLayer, HistoricalLayer, TopographyLayer
 from ..utils.log import create_logger
+from math import gcd
 
 
 log = create_logger(__name__)
@@ -456,6 +457,8 @@ class Agent(pygame.sprite.Sprite):
         self.current_action = 0
         self.waypoints: Optional[list[Tuple[int, int]]] = None
         self.touched_fire: int = 0
+        self._move_counter = {"x": 0, "y": 0}
+        self.valid_points = []
 
         #rect.x, rect.y         # Position (top-left corner)
         #rect.width, rect.height  # Size
@@ -540,36 +543,76 @@ class Agent(pygame.sprite.Sprite):
     def next_movement(self) -> None:
         """
         Move the agent towards the current waypoint in self.waypoints.
-        The agent moves in cardinal directions, prioritizing diagonal movement
-        (i.e., alternating between x and y if both are needed).
-        When a waypoint is reached, move to the next one.
-        This version is iterative, not recursive.
+        The agent moves in cardinal directions, choosing the direction that
+        best approximates a straight line to the waypoint using the ratio of dx:dy.
+        For every N steps in x, take M steps in y, where N:M approximates |dx|:|dy|.
+        Handles all quadrants (positive and negative directions).
         """
-        while hasattr(self, "waypoints") and self.waypoints:
-            target = self.waypoints[0]
-            x, y = self.pos
-            tx, ty = target
-
-            dx = tx - x
-            dy = ty - y
-
-            if dx != 0 and dy != 0:
-                if abs(dx) >= abs(dy):
-                    self.latest_movement = "right" if dx > 0 else "left"
-                else:
-                    self.latest_movement = "down" if dy > 0 else "up"
-                break
-            elif dx != 0:
-                self.latest_movement = "right" if dx > 0 else "left"
-                break
-            elif dy != 0:
-                self.latest_movement = "down" if dy > 0 else "up"
-                break
-            else:
-                # Waypoint reached, pop and check next
-                self.waypoints.pop(0)
-        else:
+        if not hasattr(self, "waypoints") or not self.waypoints:
             self.latest_movement = None
+            return
+
+        target = self.waypoints[0]
+        x, y = self.pos
+        tx, ty = target
+
+        dx = tx - x
+        dy = ty - y
+
+        if dx == 0 and dy == 0:
+            # Waypoint reached, pop and check next
+            self.waypoints.pop(0)
+            self.latest_movement = None
+            if hasattr(self, "_move_counter"):
+                self._move_counter = {"x": 0, "y": 0}
+            return
+
+        abs_dx = abs(dx)
+        abs_dy = abs(dy)
+
+        # If either dx or dy is zero, just move in the nonzero direction
+        if abs_dx == 0:
+            self.latest_movement = "down" if dy > 0 else "up"
+            return
+        if abs_dy == 0:
+            self.latest_movement = "right" if dx > 0 else "left"
+            return
+
+        # Find the smallest integer ratio that approximates dx:dy
+        g = gcd(abs_dx, abs_dy)
+        step_x = abs_dx // g
+        step_y = abs_dy // g
+
+        # Store direction for x and y
+        dir_x = "right" if dx > 0 else "left"
+        dir_y = "down" if dy > 0 else "up"
+
+        # Use counters to track how many steps have been taken in each direction
+        if not hasattr(self, "_move_counter"):
+            self._move_counter = {"x": 0, "y": 0}
+
+        # Decide which direction to move next based on the ratio
+        # The idea: for every step_x steps in x, take step_y steps in y
+        # We alternate between x and y moves to approximate the line
+
+        # Calculate the total steps needed to reach the next "corner" in the grid
+        total_steps = step_x + step_y
+
+        # Determine which direction to move this step
+        # Use the counters to keep track of progress along the ratio
+        if self._move_counter["x"] * step_y <= self._move_counter["y"] * step_x:
+            # Move in x direction (respect sign)
+            self.latest_movement = dir_x
+            self._move_counter["x"] += 1
+        else:
+            # Move in y direction (respect sign)
+            self.latest_movement = dir_y
+            self._move_counter["y"] += 1
+
+        # Reset counters if we've completed a full ratio cycle or reached the waypoint
+        if (self._move_counter["x"] >= step_x and self._move_counter["y"] >= step_y) or \
+           (abs(self.pos[0] - tx) < step_x and abs(self.pos[1] - ty) < step_y):
+            self._move_counter = {"x": 0, "y": 0}
 
         
 

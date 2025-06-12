@@ -18,8 +18,8 @@ simulation:
   save_data: true
   data_type: "npy"
   sf_home: "~/.simfire"
-  run_time: 160 #in minutes
-  n_waypoints: 3
+  run_time: 40 #in minutes
+  n_waypoints: 1
 
 mitigation:
   ros_attenuation: true
@@ -29,7 +29,6 @@ agents:
     agent_size: 1
     spawn_points:
         [[20, 20],
-         
          ]
   dozer:
     agent_size: 6
