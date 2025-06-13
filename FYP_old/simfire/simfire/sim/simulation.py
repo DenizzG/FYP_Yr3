@@ -716,7 +716,6 @@ class FireSimulation(Simulation):
     
 
     def copy(self):
-        #create new isntance of firesimulation
         sim_copy = FireSimulation(self.config)
 
         sim_copy.fire_map = np.copy(self.fire_map)
@@ -724,7 +723,7 @@ class FireSimulation(Simulation):
         sim_copy.agents = {}
 
         for agent_id, agent in self.agents.items():
-            agent_copy = agent.copy_agent()  # Use the custom clone()
+            agent_copy = agent.copy_agent()
             sim_copy.agents[agent_id] = agent_copy
 
         sim_copy.elapsed_steps = self.elapsed_steps
@@ -735,7 +734,6 @@ class FireSimulation(Simulation):
         if self._rendering:
             sim_copy.rendering = True
 
-        # Now deal with fire_manager separately
         sim_copy.fire_manager = self.fire_manager.copy_fire_manager()
 
         sim_copy.fireline_manager = self.fireline_manager.copy_manager()
@@ -749,8 +747,9 @@ class FireSimulation(Simulation):
 
         sim_copy.terrain = self.terrain
         sim_copy.environment = self.environment
-        
+
         return sim_copy
+
 
 
     #Resets fire_map to UNBURNED excpect for fire's starting position, which is BURNING

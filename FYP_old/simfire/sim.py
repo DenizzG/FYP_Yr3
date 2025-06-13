@@ -3,6 +3,7 @@ from simfire.sim.simulation import FireSimulation
 import optuna
 from optuna.samplers import RandomSampler, TPESampler, QMCSampler
 import uuid
+import numpy as np
 
 config = Config("configs/operational_config.yml")
 #sim = FireSimulation(config)
@@ -31,12 +32,14 @@ for i in range (config.simulation.run_time):
 
     # Step 2: Create Optuna objective that uses valid_points_dict
     def optuna_objective(trial):
+        np.set_printoptions(threshold=np.inf, linewidth=np.inf)
         sim_trial = sim.copy()
         # Assign precomputed valid_points back into this fresh sim object:
         for agent_id, agent in sim.agents.items():
             agent.valid_points = valid_points_dict[agent_id]
         return sim_trial.run(trial)
-
+    
+    #ToDo: get rid of unqiie name for every run
     unique_name = f"fire_optimization_{uuid.uuid4()}"
 
     sampler = QMCSampler(qmc_type='sobol', seed=1)

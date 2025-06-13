@@ -830,15 +830,17 @@ class RothermelFireManager(FireManager):
             max_fire_duration=self.max_fire_duration,
             pixel_scale=self.pixel_scale,
             update_rate=self.update_rate,
-            fuel_particle=self.fuel_particle,  # shallow copy OK
-            terrain=self.terrain,              # terrain assumed static
-            environment=self.environment,      # environment assumed static
+            fuel_particle=self.fuel_particle,
+            terrain=self.terrain,
+            environment=self.environment,
             max_time=self.max_time,
             attenuate_line_ros=self.attenuate_line_ros,
             headless=self.headless,
             diagonal_spread=self.diagonal_spread,
             agents_enable=self.agents_enable
         )
+        return fm_copy
+
 
         # Manually copy internal state (numpy arrays and simple attributes)
         fm_copy.elapsed_time = self.elapsed_time

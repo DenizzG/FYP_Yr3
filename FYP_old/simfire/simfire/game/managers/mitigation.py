@@ -88,19 +88,26 @@ class ControlLineManager:
         manager_copy = self.__class__(
             size=self.size,
             pixel_scale=self.pixel_scale,
-            terrain=self.terrain,  # terrain is safe shallow copy
+            terrain=self.terrain,
             headless=self.headless,
         )
         manager_copy.line_type = self.line_type
         manager_copy.sprite_type = self.sprite_type
 
-        # Deep copy sprites: re-instantiate each sprite object
         manager_copy.sprites = [
-            self.sprite_type((sprite.rect.x, sprite.rect.y), sprite.size, sprite.headless)
+            self.sprite_type(
+                (
+                    sprite.rect.x // sprite.size,  # recover grid x
+                    sprite.rect.y // sprite.size   # recover grid y
+                ),
+                sprite.size,
+                sprite.headless
+            )
             for sprite in self.sprites
         ]
 
         return manager_copy
+
 
 
 
