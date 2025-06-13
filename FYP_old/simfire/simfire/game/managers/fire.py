@@ -823,6 +823,45 @@ class RothermelFireManager(FireManager):
 
             return fire_map, GameStatus.RUNNING
 
+    def copy_fire_manager(self):
+        fm_copy = RothermelFireManager(
+            init_pos=self.init_pos,
+            fire_size=self.fire_size,
+            max_fire_duration=self.max_fire_duration,
+            pixel_scale=self.pixel_scale,
+            update_rate=self.update_rate,
+            fuel_particle=self.fuel_particle,  # shallow copy OK
+            terrain=self.terrain,              # terrain assumed static
+            environment=self.environment,      # environment assumed static
+            max_time=self.max_time,
+            attenuate_line_ros=self.attenuate_line_ros,
+            headless=self.headless,
+            diagonal_spread=self.diagonal_spread,
+            agents_enable=self.agents_enable
+        )
+
+        # Manually copy internal state (numpy arrays and simple attributes)
+        fm_copy.elapsed_time = self.elapsed_time
+        fm_copy.burn_amounts = np.copy(self.burn_amounts)
+        fm_copy.rate_of_spread = np.copy(self.rate_of_spread)
+        fm_copy.slope_mag = np.copy(self.slope_mag)
+        fm_copy.slope_dir = np.copy(self.slope_dir)
+        fm_copy.U = np.copy(self.U)
+        fm_copy.U_dir = np.copy(self.U_dir)
+        fm_copy.durations = list(self.durations)
+        fm_copy.tick_counter = self.tick_counter
+        fm_copy.avg_new_fire_position = list(self.avg_new_fire_position)
+
+        # For sprites: just copy positions, not Pygame surfaces
+        fm_copy.sprites = [
+            Fire((sprite.rect.x, sprite.rect.y), sprite.size, headless=self.headless)
+            for sprite in self.sprites
+        ]
+
+        # Skip copying self.fs_graph or implement separate copy_graph() if needed
+
+        return fm_copy
+
 
 class ConstantSpreadFireManager(FireManager):
     """

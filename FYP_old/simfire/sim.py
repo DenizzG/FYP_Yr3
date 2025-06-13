@@ -9,47 +9,52 @@ config = Config("configs/operational_config.yml")
 #sim.rendering = True
 
 #sim.run("80m") #every minute is 1 tick of the simulation
+def extract_best_waypoints(best_params, valid_points_dict, agent_id=0, n_waypoints=1):
+    waypoint_list = []
+    for i in range(n_waypoints):
+        idx = best_params[f"agent_{agent_id}_waypoint_{i}_idx"]
+        xy = valid_points_dict[agent_id][idx]
+        waypoint_list.extend(xy)  # flatten tuple (x,y) into list
+    return tuple(waypoint_list)
 
+    
 # Step 1: Create one dummy FireSimulation instance to precompute valid points
 sim = FireSimulation(config)
+sim.rendering = True  # Enable rendering for the simulation
 sim.assign_valid_points()  # call once here
 valid_points_dict = {}
 
-# Extract valid_points from agents, and store externally:
-for agent_id, agent in sim.agents.items():
-    valid_points_dict[agent_id] = agent.valid_points
-
-# Step 2: Create Optuna objective that uses valid_points_dict
-def optuna_objective(trial):
-    sim = FireSimulation(config)
-    sim.rendering = True
-    # Assign precomputed valid_points back into this fresh sim object:
+for i in range (config.simulation.run_time):
+    # Extract valid_points from agents, and store externally:
     for agent_id, agent in sim.agents.items():
-        agent.valid_points = valid_points_dict[agent_id]
-    return sim.run(trial)
+        valid_points_dict[agent_id] = agent.valid_points
 
-unique_name = f"fire_optimization_{uuid.uuid4()}"
+    # Step 2: Create Optuna objective that uses valid_points_dict
+    def optuna_objective(trial):
+        sim_trial = sim.copy()
+        # Assign precomputed valid_points back into this fresh sim object:
+        for agent_id, agent in sim.agents.items():
+            agent.valid_points = valid_points_dict[agent_id]
+        return sim_trial.run(trial)
 
-sampler = QMCSampler(qmc_type='sobol', seed=42)
+    unique_name = f"fire_optimization_{uuid.uuid4()}"
 
-study_tpe = optuna.create_study(
-    direction="minimize",
-    sampler=sampler, 
-    study_name=f"bayesian_search_{unique_name}",
-    storage=f"sqlite:///{unique_name}_tpe.db",
-    load_if_exists=True
-)
-study_tpe.optimize(optuna_objective, n_trials=10)
-print("TPE - Best area burned:", study_tpe.best_value)
-print("TPE - Best params:", study_tpe.best_params)
+    sampler = QMCSampler(qmc_type='sobol', seed=1)
 
-# Now save a GIF and fire spread graph from the last 2 hours of simulation
+    study_tpe = optuna.create_study(
+        direction="minimize",
+        sampler=sampler, 
+        study_name=f"bayesian_search_{unique_name}",
+        storage=f"sqlite:///{unique_name}_tpe.db",
+        load_if_exists=True
+    )
+    study_tpe.optimize(optuna_objective, n_trials=10)
+    print(f"Study {i+1} - Best area burned:", study_tpe.best_value)
+    print(f"Study {i+1} - Best params:", study_tpe.best_params)
 
-#sim.save_gif("gifs/simulation.gif")
-#sim.save_spread_graph()
+    best_params = study_tpe.best_trial.params
+    best_waypoints = extract_best_waypoints(best_params, valid_points_dict)
 
-# Saved to the location specified in the config: simulation.sf_home
+    print(f"Study {i+1} - Best waypoints:", best_waypoints)
 
-# Turn off rendering so the display disappears and the simulation continues to run in the
-# background
-#sim.rendering = False
+    sim.run_for_one_step(best_waypoints)

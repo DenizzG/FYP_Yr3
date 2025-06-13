@@ -14,6 +14,7 @@ import jsonlines
 import numpy as np
 import optuna
 from optuna.samplers import RandomSampler, QMCSampler
+import copy 
 
 from ..enums import (
     BurnStatus,
@@ -34,6 +35,7 @@ from ..utils.config import Config
 from ..utils.log import create_logger
 from ..utils.units import str_to_minutes
 from ..world.parameters import Environment, FuelParticle
+
 
 log = create_logger(__name__)
 
@@ -219,6 +221,7 @@ class FireSimulation(Simulation):
         self._create_fire()
         self._create_mitigations()
         self.elapsed_steps = 0
+        self.elapsed_time = 0
         self.fire_status: GameStatus = GameStatus.RUNNING
         self.active = True
 
@@ -668,6 +671,87 @@ class FireSimulation(Simulation):
 
         #return self.fire_map, self.active
         return area_burnt
+
+    def run_for_one_step(self, best_waypoint):
+        """
+        Runs the simulation for a limited number of updates (ticks), identical to `run()`,
+        but stops after `n_steps - 1` regardless of full runtime.
+
+        Arguments:
+            trial: Optuna trial object for waypoint planning.
+            n_steps: Number of simulation steps to run.
+
+        Returns:
+            area_burnt: Objective function value after n_steps.
+        """
+        total_updates = round(self.config.simulation.run_time / self.config.simulation.update_rate)
+        num_updates = 0
+        self.elapsed_time = self.fire_manager.elapsed_time
+
+        #append the waypoint.
+        for agent_id, agent in self.agents.items():
+            waypoints = []
+            waypoints.append(best_waypoint)
+            agent.waypoints = waypoints
+
+        while self.fire_status == GameStatus.RUNNING and num_updates < total_updates and num_updates < 1:
+
+            self.update_agent_positions()
+            self.update_mitigation()
+            self.fire_sprites = self.fire_manager.sprites
+            self.fire_map, self.fire_status = self.fire_manager.update(self.fire_map, self.agents, self.agent_positions)
+
+            if self._rendering:
+                self._render()
+
+            num_updates += 1
+            self.elapsed_time = self.fire_manager.elapsed_time
+            self.elapsed_steps += 1
+
+            if self.config.simulation.save_data:
+                self._save_data()
+
+        self.active = True if self.fire_status == GameStatus.RUNNING else False
+
+    
+
+    def copy(self):
+        #create new isntance of firesimulation
+        sim_copy = FireSimulation(self.config)
+
+        sim_copy.fire_map = np.copy(self.fire_map)
+        sim_copy.agent_positions = np.copy(self.agent_positions)
+        sim_copy.agents = {}
+
+        for agent_id, agent in self.agents.items():
+            agent_copy = agent.copy_agent()  # Use the custom clone()
+            sim_copy.agents[agent_id] = agent_copy
+
+        sim_copy.elapsed_steps = self.elapsed_steps
+        sim_copy.elapsed_time = self.elapsed_time
+        sim_copy.fire_status = self.fire_status
+        sim_copy.active = self.active
+        sim_copy._rendering = self._rendering
+        if self._rendering:
+            sim_copy.rendering = True
+
+        # Now deal with fire_manager separately
+        sim_copy.fire_manager = self.fire_manager.copy_fire_manager()
+
+        sim_copy.fireline_manager = self.fireline_manager.copy_manager()
+        sim_copy.scratchline_manager = self.scratchline_manager.copy_manager()
+        sim_copy.wetline_manager = self.wetline_manager.copy_manager()
+
+        sim_copy.fireline_sprites = sim_copy.fireline_manager.sprites
+        sim_copy.fireline_sprites_empty = sim_copy.fireline_manager.sprites.copy()
+        sim_copy.scratchline_sprites = sim_copy.scratchline_manager.sprites
+        sim_copy.wetline_sprites = sim_copy.wetline_manager.sprites
+
+        sim_copy.terrain = self.terrain
+        sim_copy.environment = self.environment
+        
+        return sim_copy
+
 
     #Resets fire_map to UNBURNED excpect for fire's starting position, which is BURNING
     def _create_fire_map(self) -> None:

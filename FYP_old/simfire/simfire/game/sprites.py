@@ -643,3 +643,27 @@ class Agent(pygame.sprite.Sprite):
         # Update the agent's position
         self.pos = (x, y)
 
+    def copy_agent(self):
+        """
+        Custom copy for Agent that avoids pygame surfaces.
+        """
+        agent_copy = Agent(
+            pos=self.pos,
+            size=self.size,
+            agent_id=self.agent_id,
+            fire_map_shape=self.fire_map_shape,
+            headless=self.headless
+        )
+        # Manually copy simple fields
+        agent_copy.action_space = list(self.action_space)
+        agent_copy.touched_fire = self.touched_fire
+        agent_copy.latest_interaction = self.latest_interaction
+        agent_copy.valid_points = list(self.valid_points)
+        agent_copy.waypoints = None
+        agent_copy._move_counter = dict(self._move_counter)
+        agent_copy._previous_position = self._previous_position
+        agent_copy.mitigation_placed = self.mitigation_placed
+        agent_copy.moved_off_map = self.moved_off_map
+
+        return agent_copy
+

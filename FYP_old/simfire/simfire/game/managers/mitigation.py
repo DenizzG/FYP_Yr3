@@ -78,6 +78,30 @@ class ControlLineManager:
                 self._add_point(point)
 
         return fire_map
+    
+    # Inside your FireLineManager class (same for ScratchLineManager, WetLineManager)
+
+    def copy_manager(self):
+        """
+        Create a deep copy of this mitigation manager.
+        """
+        manager_copy = self.__class__(
+            size=self.size,
+            pixel_scale=self.pixel_scale,
+            terrain=self.terrain,  # terrain is safe shallow copy
+            headless=self.headless,
+        )
+        manager_copy.line_type = self.line_type
+        manager_copy.sprite_type = self.sprite_type
+
+        # Deep copy sprites: re-instantiate each sprite object
+        manager_copy.sprites = [
+            self.sprite_type((sprite.rect.x, sprite.rect.y), sprite.size, sprite.headless)
+            for sprite in self.sprites
+        ]
+
+        return manager_copy
+
 
 
 class FireLineManager(ControlLineManager):
@@ -118,6 +142,8 @@ class FireLineManager(ControlLineManager):
         self.sprite_type = FireLine
         self.sprites: List[FireLine] = []
 
+    # Inside your FireLineManager class (same for ScratchLineManager, WetLineManager)
+
 
 class ScratchLineManager(ControlLineManager):
     """
@@ -156,6 +182,7 @@ class ScratchLineManager(ControlLineManager):
         self.line_type = BurnStatus.SCRATCHLINE
         self.sprite_type = ScratchLine
         self.sprites: List[ScratchLine] = []
+
 
 
 class WetLineManager(ControlLineManager):
