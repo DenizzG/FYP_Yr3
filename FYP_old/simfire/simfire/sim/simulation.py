@@ -504,7 +504,7 @@ class FireSimulation(Simulation):
         self.fire_map = self.scratchline_manager.update(self.fire_map, scratchlines)
         self.fire_map = self.wetline_manager.update(self.fire_map, wetlines)
 
-    def valid_points(self) -> dict:
+    def valid_points(self, tick) -> dict:
         """
         Computes all valid points for each agent at the current simulation tick.
         For each agent, valid points are those at a Manhattan distance equal to the
@@ -518,11 +518,10 @@ class FireSimulation(Simulation):
         """
         valid_points_dict = {}
         map_height, map_width = self.config.area.screen_size
-        total_ticks = self.config.simulation.run_time
+        total_ticks = tick
         #try self.(elapsed_time, elapsed_steps or current_ticks).
         #We have to say current_tick = 0 because we are starting a new simulation at every tick, so that SMCSampler can do it
-        current_tick = 0  
-        remaining_ticks = total_ticks - current_tick
+        remaining_ticks = self.config.simulation.run_time - tick
         if remaining_ticks < 0:
             remaining_ticks = 0
 
@@ -559,8 +558,8 @@ class FireSimulation(Simulation):
                 if self.fire_map[y, x] == 1:
                     agent.touched_fire += 1
 
-    def assign_valid_points(self):
-        valid_points_dict = self.valid_points()
+    def assign_valid_points(self, tick):
+        valid_points_dict = self.valid_points(tick)
         for agent_id, agent in self.agents.items():
             # Assign the valid points to the agent
             agent.valid_points = valid_points_dict[agent_id]
@@ -640,14 +639,10 @@ class FireSimulation(Simulation):
         self.trial_agents_plan(trial)
 
         while self.fire_status == GameStatus.RUNNING and num_updates < total_updates:
-
-            #Normally self.fire_manager
-
-            self.update_agent_positions()
+            self.update_agent_positions_and_grid()
             self.update_mitigation()
             self.fire_sprites = self.fire_manager.sprites
             self.fire_map, self.fire_status = self.fire_manager.update(self.fire_map, self.agents, self.agent_positions)
-            
             
             if self._rendering:
                 self._render()
@@ -672,6 +667,26 @@ class FireSimulation(Simulation):
         #return self.fire_map, self.active
         return area_burnt
 
+    def update_agent_positions_and_grid(self):
+       # Move agents
+        for agent_id, agent in self.agents.items():
+            agent.next_movement()
+            x, y = agent.pos
+
+            # Bounds checking
+            if 0 <= y < self.fire_map.shape[0] and 0 <= x < self.fire_map.shape[1]:
+                if self.fire_map[y, x] == 1:
+                    agent.touched_fire += 1
+
+        # Clear grid
+        self.agent_positions[:, :] = 0
+
+        # Update agent_positions grid
+        for agent_id, agent in self.agents.items():
+            x, y = agent.pos
+            self.agent_positions[y][x] = agent_id
+
+
     def run_for_one_step(self, best_waypoint):
         """
         Runs the simulation for a limited number of updates (ticks), identical to `run()`,
@@ -689,14 +704,15 @@ class FireSimulation(Simulation):
         self.elapsed_time = self.fire_manager.elapsed_time
 
         #append the waypoint.
+        #ToDo: chaange this for multiple agents and multiple waypoints
         for agent_id, agent in self.agents.items():
             waypoints = []
             waypoints.append(best_waypoint)
             agent.waypoints = waypoints
 
-        while self.fire_status == GameStatus.RUNNING and num_updates < total_updates and num_updates < 1:
+        for i in range(1):
 
-            self.update_agent_positions()
+            self.update_agent_positions_and_grid()
             self.update_mitigation()
             self.fire_sprites = self.fire_manager.sprites
             self.fire_map, self.fire_status = self.fire_manager.update(self.fire_map, self.agents, self.agent_positions)
@@ -717,15 +733,20 @@ class FireSimulation(Simulation):
 
     def copy(self):
         sim_copy = FireSimulation(self.config)
-
         sim_copy.fire_map = np.copy(self.fire_map)
         sim_copy.agent_positions = np.copy(self.agent_positions)
-        sim_copy.agents = {}
 
+        sim_copy.agents = {}
         for agent_id, agent in self.agents.items():
             agent_copy = agent.copy_agent()
             sim_copy.agents[agent_id] = agent_copy
 
+
+        sim_copy.agent_positions = np.zeros_like(self.fire_map)
+        for agent_id, agent in sim_copy.agents.items():
+            x, y = agent.pos
+            sim_copy.agent_positions[y][x] = agent_id
+            
         sim_copy.elapsed_steps = self.elapsed_steps
         sim_copy.elapsed_time = self.elapsed_time
         sim_copy.fire_status = self.fire_status

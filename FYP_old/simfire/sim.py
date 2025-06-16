@@ -22,22 +22,31 @@ def extract_best_waypoints(best_params, valid_points_dict, agent_id=0, n_waypoin
 # Step 1: Create one dummy FireSimulation instance to precompute valid points
 sim = FireSimulation(config)
 sim.rendering = True  # Enable rendering for the simulation
-sim.assign_valid_points()  # call once here
-valid_points_dict = {}
 
 for i in range (config.simulation.run_time):
+    sim.assign_valid_points(i)  # call once here
+    valid_points_dict = {}
+    print("~~~~~~~~~~~~~~~")
+    print(sim.agents.items())
+    print("~~~~~~~~~~~~~~~")
     # Extract valid_points from agents, and store externally:
     for agent_id, agent in sim.agents.items():
         valid_points_dict[agent_id] = agent.valid_points
+        print(f"Agent {agent_id}: pos={agent.pos}, agent_positions grid value = {sim.agent_positions[agent.pos[1]][agent.pos[0]]}")
+
+    for agent_id in valid_points_dict:
+        print(f"Agent {agent_id} has {len(valid_points_dict[agent_id])} valid points.")
 
     # Step 2: Create Optuna objective that uses valid_points_dict
     def optuna_objective(trial):
         np.set_printoptions(threshold=np.inf, linewidth=np.inf)
-        sim_trial = sim.copy()
+        sim = FireSimulation(config)
+        sim.rendering = True
+        #sim_trial = sim.copy()
         # Assign precomputed valid_points back into this fresh sim object:
         for agent_id, agent in sim.agents.items():
             agent.valid_points = valid_points_dict[agent_id]
-        return sim_trial.run(trial)
+        return sim.run(trial)
     
     #ToDo: get rid of unqiie name for every run
     unique_name = f"fire_optimization_{uuid.uuid4()}"
@@ -51,13 +60,13 @@ for i in range (config.simulation.run_time):
         storage=f"sqlite:///{unique_name}_tpe.db",
         load_if_exists=True
     )
-    study_tpe.optimize(optuna_objective, n_trials=10)
+    study_tpe.optimize(optuna_objective, n_trials=1)
     print(f"Study {i+1} - Best area burned:", study_tpe.best_value)
     print(f"Study {i+1} - Best params:", study_tpe.best_params)
 
     best_params = study_tpe.best_trial.params
     best_waypoints = extract_best_waypoints(best_params, valid_points_dict)
-
     print(f"Study {i+1} - Best waypoints:", best_waypoints)
 
     sim.run_for_one_step(best_waypoints)
+    

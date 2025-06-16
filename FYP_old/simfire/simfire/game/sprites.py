@@ -645,7 +645,7 @@ class Agent(pygame.sprite.Sprite):
 
     def copy_agent(self):
         """
-        Custom copy for Agent that avoids pygame surfaces.
+        Custom copy for Agent that avoids pygame surfaces and sprite group leakage.
         """
         agent_copy = Agent(
             pos=self.pos,
@@ -654,6 +654,7 @@ class Agent(pygame.sprite.Sprite):
             fire_map_shape=self.fire_map_shape,
             headless=self.headless
         )
+        
         # Manually copy simple fields
         agent_copy.action_space = list(self.action_space)
         agent_copy.touched_fire = self.touched_fire
@@ -666,4 +667,5 @@ class Agent(pygame.sprite.Sprite):
         agent_copy.moved_off_map = self.moved_off_map
 
         return agent_copy
+
 
