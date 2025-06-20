@@ -81,27 +81,30 @@ class ControlLineManager:
     
     # Inside your FireLineManager class (same for ScratchLineManager, WetLineManager)
 
-    def copy_manager(self):
+    def copy_manager(self, headless: bool = None):
         """
         Create a deep copy of this mitigation manager.
+        
+        Arguments:
+            headless: The headless setting for the copied manager. If None, uses the original setting.
         """
+        if headless is None:
+            headless = self.headless
+            
         manager_copy = self.__class__(
             size=self.size,
             pixel_scale=self.pixel_scale,
             terrain=self.terrain,
-            headless=self.headless,
+            headless=headless,
         )
         manager_copy.line_type = self.line_type
         manager_copy.sprite_type = self.sprite_type
 
         manager_copy.sprites = [
             self.sprite_type(
-                (
-                    sprite.rect.x // sprite.size,  # recover grid x
-                    sprite.rect.y // sprite.size   # recover grid y
-                ),
+                sprite.pos,  # Use the sprite's pos attribute which contains the grid coordinates
                 sprite.size,
-                sprite.headless
+                headless  # Use the new headless setting
             )
             for sprite in self.sprites
         ]

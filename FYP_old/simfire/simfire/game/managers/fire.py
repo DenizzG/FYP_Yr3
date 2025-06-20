@@ -839,8 +839,6 @@ class RothermelFireManager(FireManager):
             diagonal_spread=self.diagonal_spread,
             agents_enable=self.agents_enable
         )
-        return fm_copy
-
 
         # Manually copy internal state (numpy arrays and simple attributes)
         fm_copy.elapsed_time = self.elapsed_time

@@ -14,7 +14,7 @@ import jsonlines
 import numpy as np
 import optuna
 from optuna.samplers import RandomSampler, QMCSampler
-import copy 
+import copy as pycopy
 
 from ..enums import (
     BurnStatus,
@@ -497,12 +497,17 @@ class FireSimulation(Simulation):
                     scratchlines.append((x, y))
                 elif agent.latest_interaction == "scratchline":
                     wetlines.append((x, y)) 
-        
+
 
         # Update the self.fire_map using the managers
         self.fire_map = self.fireline_manager.update(self.fire_map, firelines)
         self.fire_map = self.scratchline_manager.update(self.fire_map, scratchlines)
         self.fire_map = self.wetline_manager.update(self.fire_map, wetlines)
+        
+        # Update the sprite lists to include new sprites
+        self.fireline_sprites = self.fireline_manager.sprites
+        self.scratchline_sprites = self.scratchline_manager.sprites
+        self.wetline_sprites = self.wetline_manager.sprites
 
     def valid_points(self, tick) -> dict:
         """
@@ -527,25 +532,24 @@ class FireSimulation(Simulation):
 
         for agent_id, agent in self.agents.items():
             x, y = agent.pos
-            radius = int(remaining_ticks)
+            radius = remaining_ticks
 
             min_x = int(max(0, x - radius))
             max_x = int(min(map_width - 1, x + radius))
             min_y = int(max(0, y - radius))
             max_y = int(min(map_height - 1, y + radius))
 
+            # Manhattan "circle": all points with Manhattan distance == radius
             valid_points = [
                 (px, py)
                 for px in range(min_x, max_x + 1)
                 for py in range(min_y, max_y + 1)
                 if abs(px - x) + abs(py - y) == radius
             ]
-
             if not valid_points:
                 valid_points = [(x, y)]
 
             valid_points_dict[agent_id] = valid_points
-
         return valid_points_dict
 
 
@@ -599,8 +603,14 @@ class FireSimulation(Simulation):
 
         return total_burned + penalty
 
+    def objective_function_without_penalty(self) -> float:
+        # Determine total area burned
+        fire_map_copy = self.fire_map.copy()
+        mask = (fire_map_copy == 1) | (fire_map_copy == 2)
+        total_burned = np.sum(fire_map_copy[mask])  # sums up all pixels with values 1 or 2 (BURNING OR BURNED)
+        return total_burned
 
-    def run(self, trial) -> Tuple[np.ndarray, bool]:
+    def run(self, trial, current_step: int = 0) -> Tuple[np.ndarray, bool]:
         #print("Printing: Method - Run, Class FireSimulation, simulation.py", flush=True) #uncomment
 
         """
@@ -613,9 +623,8 @@ class FireSimulation(Simulation):
                 (to compare for reward calculation)
 
         Arguments:
-            time: Either how many updates to run the simulation, based on the config
-                  value, `config.simulation.update_rate`, or a length of time expressed
-                  as a string (e.g. `120m`, `2h`, `2hour`, `2hours`, `1h 60m`, etc.)
+            trial: Optuna trial object for waypoint planning.
+            current_step: Current simulation step to calculate remaining time.
 
         Returns:
             A tuple of the following:
@@ -630,7 +639,9 @@ class FireSimulation(Simulation):
             total_updates = round(time / self.config.simulation.update_rate)
         elif isinstance(time, int):"""
 
-        total_updates = round(self.config.simulation.run_time / self.config.simulation.update_rate)
+        # Calculate remaining time based on current step
+        remaining_time = max(0, self.config.simulation.run_time - current_step)
+        total_updates = round(remaining_time / self.config.simulation.update_rate)
         num_updates = 0
         self.elapsed_time = self.fire_manager.elapsed_time
 
@@ -699,16 +710,18 @@ class FireSimulation(Simulation):
         Returns:
             area_burnt: Objective function value after n_steps.
         """
+        #Might not be needed, but keeping it here for now
         total_updates = round(self.config.simulation.run_time / self.config.simulation.update_rate)
         num_updates = 0
         self.elapsed_time = self.fire_manager.elapsed_time
 
-        #append the waypoint.
         #ToDo: chaange this for multiple agents and multiple waypoints
         for agent_id, agent in self.agents.items():
             waypoints = []
             waypoints.append(best_waypoint)
             agent.waypoints = waypoints
+            # Set the agent to place a fireline when it reaches the waypoint
+            agent.latest_interaction = "fireline"
 
         for i in range(1):
 
@@ -738,7 +751,7 @@ class FireSimulation(Simulation):
 
         sim_copy.agents = {}
         for agent_id, agent in self.agents.items():
-            agent_copy = agent.copy_agent()
+            agent_copy = agent.copy_agent() if hasattr(agent, "copy_agent") else pycopy.deepcopy(agent)
             sim_copy.agents[agent_id] = agent_copy
 
 
@@ -755,18 +768,26 @@ class FireSimulation(Simulation):
         if self._rendering:
             sim_copy.rendering = True
 
-        sim_copy.fire_manager = self.fire_manager.copy_fire_manager()
+        sim_copy.fire_manager = self.fire_manager.copy_fire_manager() if hasattr(self.fire_manager, "copy_fire_manager") else pycopy.deepcopy(self.fire_manager)
 
-        sim_copy.fireline_manager = self.fireline_manager.copy_manager()
-        sim_copy.scratchline_manager = self.scratchline_manager.copy_manager()
-        sim_copy.wetline_manager = self.wetline_manager.copy_manager()
+        # Pass the correct headless setting to ensure sprites render properly
+        target_headless = sim_copy._rendering == False  # True if headless, False if rendering
+        sim_copy.fireline_manager = self.fireline_manager.copy_manager(headless=target_headless) if hasattr(self.fireline_manager, "copy_manager") else pycopy.deepcopy(self.fireline_manager)
+        sim_copy.scratchline_manager = self.scratchline_manager.copy_manager(headless=target_headless) if hasattr(self.scratchline_manager, "copy_manager") else pycopy.deepcopy(self.scratchline_manager)
+        sim_copy.wetline_manager = self.wetline_manager.copy_manager(headless=target_headless) if hasattr(self.wetline_manager, "copy_manager") else pycopy.deepcopy(self.wetline_manager)
 
+        # Use the sprites from the copied managers instead of deepcopying
         sim_copy.fireline_sprites = sim_copy.fireline_manager.sprites
         sim_copy.fireline_sprites_empty = sim_copy.fireline_manager.sprites.copy()
         sim_copy.scratchline_sprites = sim_copy.scratchline_manager.sprites
         sim_copy.wetline_sprites = sim_copy.wetline_manager.sprites
+        
+        # Update fire sprites to point to the copied fire manager's sprites
+        sim_copy.fire_sprites = sim_copy.fire_manager.sprites
 
-        sim_copy.terrain = self.terrain
+        sim_copy.terrain = self.terrain.copy()
+        # Environment is simple, so a shallow copy is fine unless it's modified.
+        # If issues persist, this could be pycopy.deepcopy(self.environment)
         sim_copy.environment = self.environment
 
         return sim_copy
@@ -1219,6 +1240,7 @@ class FireSimulation(Simulation):
         all_contol_line_sprites = (
             self.fireline_sprites + self.scratchline_sprites + self.wetline_sprites
         )
+        
         #agent_sprites is a list of all Agent objects
         agent_sprites = list(self.agents.values()) # == [Agent(...), 
                                                    #     Agent(...), ]

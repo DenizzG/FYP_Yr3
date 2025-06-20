@@ -68,6 +68,25 @@ class Terrain(pygame.sprite.Sprite):
         # be behind every other sprite
         self.layer = SpriteLayer.TERRAIN
 
+    def copy(self):
+        """
+        Creates a new Terrain object with the same data/attributes.
+        Recreates the PyGame surface so it can render properly.
+        """
+        new_terrain = Terrain(
+            self.fuel_layer,
+            self.topo_layer,
+            self.screen_size,
+            headless=False,  # Allow rendering
+            historical_layer=self.historical_layer,
+        )
+        # The following attributes are created in the parent constructor, but
+        # we want to make sure they are the same as the original
+        new_terrain.elevations = self.elevations.copy()
+        new_terrain.fuels = self.fuels.copy()
+
+        return new_terrain
+
     def update(self, *args: Any, **kwargs: Any) -> None:
         """
         Change any burned squares to brown using fire_map, which
@@ -449,7 +468,7 @@ class Agent(pygame.sprite.Sprite):
 
         self._previous_position: Tuple[int,int] = None 
         self.latest_movement: str = "down"
-        self.latest_interaction: int = "fireline"
+        self.latest_interaction: str = "fireline"
         self.mitigation_placed: bool = False
         self.moved_off_map: bool = False
         self.action_space = []
