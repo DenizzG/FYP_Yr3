@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "fyp-yr3"
+version = "0.1.0"
+description = "Wildfire simulation and reinforcement learning research workspace."
+authors = ["Project Owner"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.10"
+simfire = { path = "FYP_old/simfire", develop = true }
+simharness2 = { path = "FYP_old/simharness", develop = true }
+optuna = "^4.3.0"
+
+[build-system]
+requires = ["poetry-core>=1.8.0"]
+build-backend = "poetry.core.masonry.api"
